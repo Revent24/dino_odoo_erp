@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data>
+
+    <record id="dino_component_action" model="ir.actions.act_window">
+        <field name="name">Component Families</field>
+        <field name="res_model">dino.component</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="dino_component_view_tree" model="ir.ui.view">
+        <field name="name">dino.component.view.list</field>
+        <field name="model">dino.component</field>
+        <field name="arch" type="xml">
+            <list string="Families" multi_edit="1">
+                <field name="name"/>
+                <field name="category_id"/>
+                <field name="uom_id"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="dino_component_view_form" model="ir.ui.view">
+        <field name="name">dino.component.view.form</field>
+        <field name="model">dino.component</field>
+        <field name="arch" type="xml">
+            <form string="Component Family">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object" name="action_view_nomenclatures" icon="fa-list">
+                            <field string="Items" name="nomenclature_count" widget="statinfo"/>
+                        </button>
+                    </div>
+
+                    <field name="image_1920" widget="image" class="oe_avatar" options="{'preview_image': 'image_128'}"/>
+                    
+                    <div class="oe_title">
+                        <label for="name" string="Family Name"/>
+                        <h1>
+                            <div class="d-flex">
+                                <field name="is_favorite" widget="boolean_favorite" class="me-2" nolabel="1"/> 
+                                <field class="text-break" name="name" placeholder="e.g. Screw M4"/> 
+                            </div>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="category_id"/>
+                        </group>
+                        <group>
+                            <field name="uom_id"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Nomenclatures" name="nomenclatures">
+                            <field name="nomenclature_ids">
+                                <list string="Executions" editable="bottom">
+                                    <button name="action_open_form" type="object" icon="fa-external-link" title="Open" width="30px" string=" "/>
+                                    <field name="create_date" string="Date" optional="show"/>
+                                    <field name="name"/>
+                                    <field name="purpose"/>
+                                    <field name="code" optional="hide"/>
+                                    <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="qty_available"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                        </page>
+                        
+                        <page string="Internal Notes" name="notes">
+                            <field name="description" placeholder="Internal notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+</data>
+</odoo>

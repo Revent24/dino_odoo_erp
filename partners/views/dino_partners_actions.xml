@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+  <!-- Actions for Partners (moved out of core menu to keep menu clean) -->
+  <record id="action_dino_partner_list" model="ir.actions.act_window">
+    <field name="name">Partners</field>
+    <field name="res_model">dino.partner</field>
+    <field name="view_mode">list,form</field>
+  </record>
+  <record id="action_dino_partner_ownership_list" model="ir.actions.act_window">
+    <field name="name">Tax Systems</field>
+    <field name="res_model">dino.partner.tax_system</field>
+    <field name="view_mode">tree,form</field>
+  </record>
+</odoo>

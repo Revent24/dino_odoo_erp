@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="0">
+    <record id="dino_uom_unit" model="dino.uom">
+      <field name="name">Unit</field>
+      <field name="rounding">0.01</field>
+    </record>
+  </data>
+</odoo>

@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+<data>
+
+    <record id="dino_nomenclature_action" model="ir.actions.act_window">
+        <field name="name">Nomenclature</field>
+        <field name="res_model">dino.nomenclature</field>
+        <field name="view_mode">list,kanban,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new Nomenclature item from Component Family.
+            </p>
+        </field>
+    </record>
+
+    <record id="dino_nomenclature_view_tree" model="ir.ui.view">
+        <field name="name">dino.nomenclature.view.list</field>
+        <field name="model">dino.nomenclature</field>
+        <field name="arch" type="xml">
+            <list string="Nomenclature" create="true" multi_edit="1">
+                <field name="fullname"/>
+                <field name="purpose" optional="show"/>
+                <field name="code" optional="hide"/>
+                <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                <field name="qty_available"/>
+                <field name="uom_id"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+    
+    <record id="dino_nomenclature_view_kanban" model="ir.ui.view">
+        <field name="name">dino.nomenclature.view.kanban</field>
+        <field name="model">dino.nomenclature</field>
+        <field name="arch" type="xml">
+            <kanban create="true">
+                <field name="id"/>
+                <field name="currency_id"/>
+                <templates>
+                    <t t-name="card" class="flex-row">
+                        <main class="pe-2">
+                            <div class="mb-1 fw-bold"><field name="fullname"/></div>
+                            <div class="text-muted"><field name="purpose"/></div>
+                            <div>Cost: <field name="total_cost" widget="monetary"/></div>
+                        </main>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+    
+    <record id="dino_bom_line_view_tree" model="ir.ui.view">
+        <field name="name">dino.bom.line.view.list</field>
+        <field name="model">dino.bom.line</field>
+        <field name="arch" type="xml">
+            <list string="BOM Lines" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <button name="action_open_analogs" type="object" icon="fa-external-link" title="Open" width="30px" string=" "/>
+                
+                <field name="component_id"/>
+                <field name="nomenclature_ids" widget="many2many_tags"
+                       domain="[('component_id', '=', component_id)]"
+                       context="{'default_component_id': component_id, 'show_short_name': True}"/>
+                <field name="qty"/>
+                <field name="cost" widget="monetary"/>
+                <field name="total_cost" widget="monetary"/>
+                <field name="currency_id" column_invisible="True"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="dino_nomenclature_view_form" model="ir.ui.view">
+        <field name="name">dino.nomenclature.view.form</field>
+        <field name="model">dino.nomenclature</field>
+        <field name="arch" type="xml">
+            <form string="Nomenclature">
+                <sheet>
+                    <field name="id" invisible="1"/>
+
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_view_parent" type="object" icon="fa-level-up" string="Family" invisible="not component_id"/>
+                        <button name="action_view_bom" type="object" icon="fa-flask" invisible="bom_count == 0"> 
+                            <div class="o_stat_info">
+                                <field name="bom_count" class="o_stat_value"/>
+                                <span class="o_stat_text">BOM Lines</span>
+                            </div>
+                        </button>
+                        <button name="action_view_used_in" type="object" icon="fa-random" invisible="used_in_count == 0">
+                            <div class="o_stat_info">
+                                <field name="used_in_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Used In</span>
+                            </div>
+                        </button>
+                        <button name="action_view_supplier_prices" type="object" icon="fa-usd" class="oe_stat_button" invisible="supplier_line_count == 0">
+                            <div class="o_stat_info">
+                                <field name="supplier_line_count" class="o_stat_value"/>
+                                <span class="o_stat_text">Prices</span>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div class="oe_title">
+                        <h1>
+                            <field name="fullname" readonly="1" placeholder="New Nomenclature"/>
+                        </h1>
+                    </div>
+
+                    <group>
+                        <group>
+                            <field name="component_id" 
+                                   placeholder="Select Family..." 
+                                   options="{'no_create': False}"
+                                   readonly="id"/>
+                            <field name="name" placeholder="e.g. 810 mm"/>
+                            <field name="purpose"/>
+                            <field name="origin_type" widget="badge" 
+                                   decoration-info="origin_type == 'purchase'" 
+                                   decoration-warning="origin_type == 'production'"/>
+                        </group>
+                        <group>
+                            <field name="category_id"/>
+                            <field name="code"/>
+                            <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}" readonly="1"/>
+                            <field name="qty_available"/>
+                            <field name="currency_id" invisible="1"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Specification" name="bom" invisible="hide_specification">
+                            <field name="bom_line_ids">
+                                <list string="Components" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <button name="action_open_analogs" type="object" icon="fa-external-link" title="Open" width="30px" string=" "/>
+                                    
+                                    <field name="component_id" options="{'no_create': False}"/>
+                                    
+                                    <field name="nomenclature_ids" widget="many2many_tags"
+                                           placeholder="Select executions..."
+                                           domain="[('component_id', '=', component_id)]"
+                                           context="{'default_component_id': component_id, 'show_short_name': True}" 
+                                           options="{'no_create': False}"/>
+                                           
+                                    <field name="qty"/>
+                                    <field name="cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="total_cost" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                                    <field name="currency_id" column_invisible="True"/>
+                                </list>
+                            </field>
+                            <separator string="Internal Notes"/>
+                            <field name="description" placeholder="Add instructions or notes..."/>
+                        </page>
+
+                        <page string="Parameters" name="parameters">
+                            <field name="parameter_ids">
+                                <list string="Params" editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name" placeholder="Parameter Name"/>
+                                    <field name="value"/>
+                                    <field name="uom_id" options="{'no_create': True}"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+
+    <record id="action_dino_nomenclature_update_cost" model="ir.actions.server">
+        <field name="name">Update Cost (Recursive)</field>
+        <field name="model_id" ref="model_dino_nomenclature"/>
+        <field name="binding_model_id" ref="model_dino_nomenclature"/>
+        <field name="binding_view_types">list,form</field>
+        <field name="state">code</field>
+        <field name="code">
+# Запускаем рекурсию для всех выбранных записей
+for record in records:
+    record.action_update_cost_recursive()
+        </field>
+    </record>
+
+    <record id="dino_nomenclature_search" model="ir.ui.view">
+        <field name="name">dino.nomenclature.search</field>
+        <field name="model">dino.nomenclature</field>
+        <field name="arch" type="xml">
+            <search string="Nomenclature Search">
+                <field name="fullname"/>
+                <field name="code"/>
+                <field name="category_id"/>
+                <separator/>
+                <filter string="Top Level Assemblies" 
+                        name="top_level" 
+                        domain="[('used_in_count', '=', 0), ('bom_line_ids', '!=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+</data>
+</odoo>

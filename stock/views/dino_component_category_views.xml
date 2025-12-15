@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_dino_component_category_form" model="ir.ui.view">
+        <field name="name">dino.component.category.form</field>
+        <field name="model">dino.component.category</field>
+        <field name="arch" type="xml">
+            <form string="Component Category">
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" name="action_view_dino_components" type="object" icon="fa-sitemap">
+                            <field string="Families" name="dino_component_count" widget="statinfo"/>
+                        </button>
+                        <button class="oe_stat_button" name="action_view_dino_nomenclatures" type="object" icon="fa-list">
+                            <field string="Items" name="dino_nomenclature_count" widget="statinfo"/>
+                        </button>
+                    </div>
+
+                    <group>
+                        <field name="name"/>
+                        <field name="parent_id"/>
+                    </group>
+
+                    <group>
+                        <group string="Configuration">
+                            <field name="hide_specification"/>
+                        </group>
+                        <group string="Origin">
+                            <field name="origin_type" widget="radio" options="{'horizontal': true}"/>
+                        </group>
+                    </group>
+
+
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

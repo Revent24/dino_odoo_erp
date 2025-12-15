@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="view_dino_partner_tree" model="ir.ui.view">
+        <field name="name">dino.partner.tree</field>
+        <field name="model">dino.partner</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="name"/>
+                <field name="full_name"/>
+                <field name="egrpou"/>
+                <field name="inn"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ==============================================
+             FORM VIEW: Форма контрагента
+             Содержит: основные поля, список контактов
+             ============================================== -->
+    <record id="view_dino_partner_form" model="ir.ui.view">
+        <field name="name">dino.partner.form</field>
+        <field name="model">dino.partner</field>
+        <field name="arch" type="xml">
+            <form>   
+                <sheet>
+                <div class="oe_title">
+                    <h1>
+                        <field name="name" placeholder="Partner Name" string="Name"/>
+                    </h1>
+                    <field name="full_name"/>
+                </div>
+
+                    <group>
+                        <group>
+                            <field name="egrpou"/>
+                            <field name="inn"/>
+                            <field name="inn_date"/>
+                        </group>
+                        <group>
+                            <field name="date_from"/>
+                            <field name="date_to"/>
+                        </group>
+                        <group>
+                            <field name="kved_number"/>
+                            <field name="kved"/>
+                        </group>
+                        <group>
+                            <field name="address"/>
+                            <field name="director"/>
+                            <field name="director_gen"/>
+                        </group>
+                        <group>
+                            <field name="tax_system_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                </list>
+                            </field>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Contacts">
+                            <field name="contact_ids">
+                                <list editable="bottom">
+                                    <field name="name"/>
+                                    <field name="position"/>
+                                    <field name="phone"/>
+                                    <field name="email"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- Ownership model removed; tax systems are handled as child records on vendor -->
+    <!-- Kanban view for vendors -->
+    <record id="view_dino_partner_kanban" model="ir.ui.view">
+        <field name="name">dino.partner.kanban</field>
+        <field name="model">dino.partner</field>
+        <field name="arch" type="xml">
+            <kanban class="o_kanban_example">
+                <templates>
+                    <t t-name="kanban-box">
+                        <div class="o_kanban_record">
+                            <div class="o_kanban_primary">
+                                <field name="name"/>
+                                <div class="o_kanban_egrpou"><field name="egrpou"/></div>
+                            </div>
+                            <div class="o_kanban_secondary">
+                                <div><strong>INN:</strong> <field name="inn"/></div>
+                                <div><strong>KVED:</strong> <field name="kved_number"/></div>
+                                <div><field name="address"/></div>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <!-- Tree view for Vendor Tax Systems (separate) -->
+    <record id="view_dino_partner_tax_system_tree" model="ir.ui.view">
+        <field name="name">dino.partner.tax.system.tree</field>
+        <field name="model">dino.partner.tax_system</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="partner_id"/>
+                <field name="name"/>
+                <field name="vat_rate"/>
+            </list>
+        </field>
+    </record>
+
+</odoo>

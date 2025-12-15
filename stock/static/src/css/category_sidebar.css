@@ -1,0 +1,9 @@
+.o_dino_cat_tree{ list-style:none; padding-left:6px; }
+.o_dino_cat_tree li{ margin:4px 0; }
+.o_dino_cat_tree li ul{ margin-left:10px; }
+.o_cp_left .o_dino_cat_tree a{ color:var(--o-text-color); text-decoration:none; }
+.o_cp_left h4{ margin:4px 0 6px; font-size:14px; }
+.o_dino_cat_tree a.selected{ font-weight:600; color:var(--o-primary-color); }
+.o_dino_cat_tree .dino-reset{ margin-left:10px; }
+.dino-cat-header{ display:flex; align-items:center; }
+.dino-cat-header > h4{ margin-right:8px; }

@@ -1,0 +1,39 @@
+<odoo>
+    <data>
+        <record id="view_dino_cashbook_tree" model="ir.ui.view">
+            <field name="name">dino.cashbook.tree</field>
+            <field name="model">dino.cashbook</field>
+            <field name="arch" type="xml">
+                <list string="Cashbook Entries">
+                    <field name="date"/>
+                    <field name="purpose"/>
+                    <field name="amount"/>
+                    <field name="currency_id"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_dino_cashbook_form" model="ir.ui.view">
+            <field name="name">dino.cashbook.form</field>
+            <field name="model">dino.cashbook</field>
+            <field name="arch" type="xml">
+                <form string="Cashbook Entry">
+                    <sheet>
+                        <group>
+                            <field name="date"/>
+                            <field name="purpose"/>
+                            <field name="amount"/>
+                            <field name="currency_id"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dino_cashbook" model="ir.actions.act_window">
+            <field name="name">Cashbook</field>
+            <field name="res_model">dino.cashbook</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>
