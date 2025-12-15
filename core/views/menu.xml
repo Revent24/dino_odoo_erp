@@ -1,32 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <menuitem id="menu_dino_minimal_root" name="Dino" sequence="40" web_icon="dino_erp,core/menu_icons/crm.png"/>
-  <menuitem id="menu_dino_minimal" name="Минимальная" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
+  <data>
+    <menuitem id="menu_dino_minimal_root" name="Dino" sequence="40" web_icon="dino_erp,core/menu_icons/crm.png"/>
+    <menuitem id="menu_dino_minimal" name="Минимальная" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
+    
+    <!-- Меню Банк -->
+    <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
+    <menuitem id="menu_dino_bank_transactions" name="Transactions" parent="menu_dino_bank_root" action="action_dino_bank_transaction" sequence="1"/>
+    <menuitem id="menu_dino_bank_currency_rates" name="Currency Rates" parent="menu_dino_bank_root" action="action_dino_currency_rate" sequence="2"/>
+    <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root" action="action_dino_bank_config" sequence="3"/>
+    
+    <!-- Меню Касса -->
+    <menuitem id="menu_dino_cashbook_root" name="Cashbook" sequence="51" web_icon="dino_erp,core/menu_icons/cash.png"/>
+    <menuitem id="menu_dino_cashbook_transactions" name="Transactions" parent="menu_dino_cashbook_root" action="action_dino_cashbook" sequence="1"/>
 
-  <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
-  <menuitem id="menu_dino_bank_transactions" name="Transactions" parent="menu_dino_bank_root" action="action_dino_bank_transaction" sequence="1"/>
-  <menuitem id="menu_dino_bank_currency_rates" name="Currency Rates" parent="menu_dino_bank_root" action="action_dino_currency_rate" sequence="2"/>
-  <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root" action="action_dino_bank_config" sequence="3"/>
-  
-  <!-- Меню Касса -->
-  <menuitem id="menu_dino_cashbook_root" name="Cashbook" sequence="51" web_icon="dino_erp,core/menu_icons/cash.png"/>
-  <menuitem id="menu_dino_cashbook_transactions" name="Transactions" parent="menu_dino_cashbook_root" action="action_dino_cashbook" sequence="1"/>
-
-  <!-- Меню Проекты -->
-  <menuitem id="menu_dino_project_root" name="Projects" sequence="52" web_icon="dino_erp,core/menu_icons/project.png"/>
-  <menuitem id="menu_dino_project_list" name="Projects List" parent="menu_dino_project_root" action="action_dino_project" sequence="1"/>
-  
-  <!-- Меню Контрагенты -->
-  <menuitem id="menu_dino_partners_root" name="Partners" parent="menu_dino_minimal_root" sequence="53" web_icon="dino_erp,core/menu_icons/partners.png"/>
-  <menuitem id="menu_dino_partner_main" name="Partner List" parent="menu_dino_partners_root" action="action_dino_partner_list" sequence="1"/>
-  <menuitem id="menu_dino_partner_ownership" name="Tax Systems" parent="menu_dino_partners_root" action="action_dino_partner_ownership_list" sequence="2"/>
-  
-  <!-- Меню Склад -->
-  <menuitem id="menu_dino_stock_root" name="Stock" sequence="60" web_icon="dino_erp,core/menu_icons/stock.png"/>
-  <menuitem id="menu_dino_stock_families" name="Components" parent="menu_dino_stock_root" action="dino_component_action" sequence="1"/>
-  <menuitem id="menu_dino_stock_nomenclatures" name="Nomenclature" parent="menu_dino_stock_root" action="dino_nomenclature_action" sequence="2"/>
-  <menuitem id="menu_dino_stock_config" name="Конфигурации" parent="menu_dino_stock_root" sequence="10"/>
-  <menuitem id="menu_dino_stock_categories" name="Категории" parent="menu_dino_stock_config" action="dino_component_category_action" sequence="1"/>
-  <menuitem id="menu_dino_stock_uom" name="Единицы измерения" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
-  
+    <!-- Меню Проекты -->
+    <menuitem id="menu_dino_project_root" name="Projects" sequence="52" web_icon="dino_erp,core/menu_icons/project.png"/>
+    <menuitem id="menu_dino_project_list" name="Projects List" parent="menu_dino_project_root" action="action_dino_project" sequence="1"/>
+    
+    <!-- Меню Контрагенты -->
+    <menuitem id="menu_dino_partners_root" name="Partners" sequence="53" web_icon="dino_erp,core/menu_icons/partners.png"/>
+    <menuitem id="menu_dino_partner_main" name="Partner List" parent="menu_dino_partners_root" action="action_dino_partner_list" sequence="1"/>
+    <menuitem id="menu_dino_partner_ownership" name="Tax Systems" parent="menu_dino_partners_root" action="action_dino_partner_ownership_list" sequence="2"/>
+    
+    <!-- Меню Склад -->
+    <menuitem id="menu_dino_stock_root" name="Stock" sequence="60" web_icon="dino_erp,core/menu_icons/stock.png"/>
+    <menuitem id="menu_dino_stock_families" name="Components" parent="menu_dino_stock_root" action="dino_component_action" sequence="1"/>
+    <menuitem id="menu_dino_stock_nomenclatures" name="Nomenclature" parent="menu_dino_stock_root" action="dino_nomenclature_action" sequence="2"/>
+    <menuitem id="menu_dino_stock_config" name="Конфигурации" parent="menu_dino_stock_root" sequence="10"/>
+    <menuitem id="menu_dino_stock_categories" name="Категории" parent="menu_dino_stock_config" action="dino_component_category_action" sequence="1"/>
+    <menuitem id="menu_dino_stock_uom" name="Единицы измерения" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
+  </data>
 </odoo>

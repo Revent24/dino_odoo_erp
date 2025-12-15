@@ -6,3 +6,6 @@ access_dino_currency_rate,dino.currency.rate,model_dino_currency_rate,base.group
 access_dino_cashbook,dino.cashbook,model_dino_cashbook,base.group_user,1,1,1,1
 access_dino_component_category,Dino Component Category Access,model_dino_component_category,base.group_user,1,1,1,1
 access_dino_uom,Dino UoM Access,model_dino_uom,base.group_user,1,1,1,1
+access_dino_partner,Dino Partner Access,model_dino_partner,base.group_user,1,1,1,1
+access_dino_partner_tax_system,Dino Partner Tax System Access,model_dino_partner_tax_system,base.group_user,1,1,1,1
+access_dino_partner_contact,Dino Partner Contact Access,model_dino_partner_contact,base.group_user,1,1,1,1
