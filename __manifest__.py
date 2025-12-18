@@ -29,6 +29,7 @@
 
         'partners/views/dino_partners_actions.xml',
         'partners/views/dino_partners_views.xml',
+        'partners/views/dino_partner_tag_views.xml',
 
         'finance/data/ir_cron_data.xml',
         'core/views/menu.xml',

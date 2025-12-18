@@ -14,8 +14,13 @@ cd ~/OdooApps/odoo19
 # 4. Запустить сервер
 python3 -m odoo server -d dino24_dev --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
 
-# Запустить сервер с принудительным обновлением модуля dino_erp_stock
+# Запустить сервер с принудительным обновлением модуля dino_erp
+source ~/OdooApps/odoo19-venv/bin/activate
+cd ~/OdooApps/odoo19
 python3 -m odoo server -d dino24_dev -u dino_erp --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
+
+# или пересборка web.assets
+python3 -m odoo server -d dino24_dev --addons-path=addons,../odoo_projects/dino24_addons --dev=assets
 
 
 # Запустить сервер с принудительным обновлением модуля dino_erp_operations
@@ -25,6 +30,9 @@ python3 -m odoo server -d dino24_dev -u dino_erp_vendors --addons-path=addons,..
 
 # Запустить сервер с обновлением модуля
 python3 -m odoo server -d dino24_dev -u dino_erp --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
+
+
+
 
 # Интерфейс
 # Перейти на http://localhost:8070/odoo/discuss

@@ -9,42 +9,56 @@ from odoo import models, fields, _, api
 
 class DinoPartner(models.Model):
     _name = 'dino.partner'
-    _description = _('Partner')
+    _description = 'Partner'
     _rec_name = 'name'
     _inherit = ['mail.thread', 'mail.activity.mixin', 'mixin.auto.translate']
 
-    name = fields.Char(string=_('Name'), required=True, translate=True, tracking=True)
-    full_name = fields.Char(string=_('Full Name'), translate=True)
-    name_short = fields.Char(string=_('Short Name'), translate=True)
-    egrpou = fields.Char(string=_('EGRPOU'), index=True)
-    address = fields.Char(string=_('Address'), translate=True)
-    director = fields.Char(string=_('Director'), translate=True)
-    director_gen = fields.Char(string=_('Director (Gen)'), translate=True)
-    kved = fields.Char(string=_('KVED'), translate=True)
-    kved_number = fields.Char(string=_('KVED Number'))
-    inn = fields.Char(string=_('INN'), index=True)
-    date_from = fields.Date(string=_('Date From'))
-    date_to = fields.Date(string=_('Date To'))
-    inn_date = fields.Date(string=_('INN Date'))
-    last_update = fields.Date(string=_('Last Update'))
+    name = fields.Char(string='Name', required=True, translate=True, tracking=True)
+    full_name = fields.Char(string='Full Name', translate=True)
+    name_short = fields.Char(string='Short Name', translate=True)
+    egrpou = fields.Char(string='EGRPOU', index=True)
+    address = fields.Char(string='Address', translate=True)
+    director = fields.Char(string='Director', translate=True)
+    director_gen = fields.Char(string='Director (Gen)', translate=True)
+    kved = fields.Char(string='KVED', translate=True)
+    kved_number = fields.Char(string='KVED Number')
+    inn = fields.Char(string='INN', index=True)
+    date_from = fields.Date(string='Date From')
+    date_to = fields.Date(string='Date To')
+    inn_date = fields.Date(string='INN Date')
+    last_update = fields.Date(string='Last Update')
     # ownership_type_id removed (ownership model deleted)
 
-    contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string=_('Contacts'))
+    contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string='Contacts')
 
-    # Partner type toggles (multi-choice using booleans)
-    partner_is_customer = fields.Boolean(string=_('Customer'), default=False)
-    partner_is_vendor = fields.Boolean(string=_('Vendor'), default=False)
+    # Partner type toggles (legacy booleans kept for compatibility)
+    partner_is_customer = fields.Boolean(string='Customer', default=False)
+    partner_is_vendor = fields.Boolean(string='Vendor', default=False)
 
-    partner_type = fields.Char(string=_('Partner Type'), compute='_compute_partner_type')
+    # New: tags/multi-choice for partner types
+    tag_ids = fields.Many2many(
+        'dino.partner.tag',
+        'dino_partner_tag_rel',
+        'partner_id',
+        'tag_id',
+        string='Type',
+    )
+
+    partner_type = fields.Char(string='Partner Type', compute='_compute_partner_type')
 
     @api.depends('partner_is_customer', 'partner_is_vendor')
     def _compute_partner_type(self):
         for rec in self:
             types = []
-            if rec.partner_is_customer:
-                types.append(_('Customer'))
-            if rec.partner_is_vendor:
-                types.append(_('Vendor'))
+            # First, collect explicit tags
+            if rec.tag_ids:
+                types = [t.name for t in rec.tag_ids]
+            else:
+                # Fallback to legacy booleans
+                if rec.partner_is_customer:
+                    types.append('Customer')
+                if rec.partner_is_vendor:
+                    types.append('Vendor')
             rec.partner_type = ', '.join(types) if types else False
 
     @api.onchange('egrpou')
@@ -216,12 +230,42 @@ class DinoPartner(models.Model):
             logging.getLogger(__name__).exception('Error updating partner on write')
 
         return res
+
+    @api.model
+    def migrate_partner_type_flags_to_tags(self):
+        """Create 'Customer' and 'Vendor' tags and assign them based on legacy booleans.
+
+        This is a helper you can call once from shell:
+            env['dino.partner'].migrate_partner_type_flags_to_tags()
+        It will not run automatically; run it when ready.
+        """
+        Tag = self.env['dino.partner.tag']
+        partner = self.env['dino.partner']
+        customer_tag = Tag.search([('name', '=', 'Customer')], limit=1) or Tag.create({'name': 'Customer'})
+        vendor_tag = Tag.search([('name', '=', 'Vendor')], limit=1) or Tag.create({'name': 'Vendor'})
+
+        # Assign tags for partners with booleans
+        cust_partners = partner.search([('partner_is_customer', '=', True)])
+        if cust_partners:
+            cust_partners.write({'tag_ids': [(4, customer_tag.id)]})
+        vend_partners = partner.search([('partner_is_vendor', '=', True)])
+        if vend_partners:
+            vend_partners.write({'tag_ids': [(4, vendor_tag.id)]})
+        return True
+
+
+class DinoPartnerTag(models.Model):
+    _name = 'dino.partner.tag'
+    _description = 'Partner Tag'
+
+    name = fields.Char(string='Name', required=True, translate=True)
+    partner_ids = fields.Many2many('dino.partner', 'dino_partner_tag_rel', 'tag_id', 'partner_id', string='Partners')
 class DinoPartnerContact(models.Model):
     _name = 'dino.partner.contact'
-    _description = _('Partner Contact')
+    _description = 'Partner Contact'
 
-    partner_id = fields.Many2one('dino.partner', string=_('Partner'), required=True, ondelete='cascade')
-    name = fields.Char(string=_('Contact Name'), required=True, translate=True)
-    phone = fields.Char(string=_('Phone'))
-    email = fields.Char(string=_('Email'))
-    position = fields.Char(string=_('Position'), translate=True)
+    partner_id = fields.Many2one('dino.partner', string='Partner', required=True, ondelete='cascade')
+    name = fields.Char(string='Contact Name', required=True, translate=True)
+    phone = fields.Char(string='Phone')
+    email = fields.Char(string='Email')
+    position = fields.Char(string='Position', translate=True)

@@ -2,7 +2,7 @@
 <odoo>
   <data>
     <menuitem id="menu_dino_minimal_root" name="Dino" sequence="40" web_icon="dino_erp,core/menu_icons/crm.png"/>
-    <menuitem id="menu_dino_minimal" name="Минимальная" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
+    <menuitem id="menu_dino_minimal" name="Minimal" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
     
     <!-- Меню Банк -->
     <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
@@ -26,14 +26,18 @@
     <!-- Меню Контрагенты -->
     <menuitem id="menu_dino_partners_root" name="Partners" sequence="53" web_icon="dino_erp,core/menu_icons/partners.png"/>
     <menuitem id="menu_dino_partner_main" name="Partner List" parent="menu_dino_partners_root" action="action_dino_partner_list" sequence="1"/>
-    <menuitem id="menu_dino_partner_ownership" name="Tax Systems" parent="menu_dino_partners_root" action="action_dino_partner_ownership_list" sequence="2"/>
-    
+    <menuitem id="menu_dino_partners_config" name="Configurations" parent="menu_dino_partners_root" sequence="10"/>
+    <menuitem id="menu_dino_partner_tag_config"
+              name="Partner Types"
+              parent="menu_dino_partners_config"
+              action="action_dino_partner_tag_list"
+              sequence="10"/>    
     <!-- Меню Склад -->
     <menuitem id="menu_dino_stock_root" name="Stock" sequence="60" web_icon="dino_erp,core/menu_icons/stock.png"/>
     <menuitem id="menu_dino_stock_families" name="Components" parent="menu_dino_stock_root" action="dino_component_action" sequence="1"/>
     <menuitem id="menu_dino_stock_nomenclatures" name="Nomenclature" parent="menu_dino_stock_root" action="dino_nomenclature_action" sequence="2"/>
-    <menuitem id="menu_dino_stock_config" name="Конфигурации" parent="menu_dino_stock_root" sequence="10"/>
-    <menuitem id="menu_dino_stock_categories" name="Категории" parent="menu_dino_stock_config" action="dino_component_category_action" sequence="1"/>
-    <menuitem id="menu_dino_stock_uom" name="Единицы измерения" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
+    <menuitem id="menu_dino_stock_config" name="Configurations" parent="menu_dino_stock_root" sequence="10"/>
+    <menuitem id="menu_dino_stock_categories" name="Categories" parent="menu_dino_stock_config" action="dino_component_category_action" sequence="1"/>
+    <menuitem id="menu_dino_stock_uom" name="Units of Measure" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
   </data>
 </odoo>

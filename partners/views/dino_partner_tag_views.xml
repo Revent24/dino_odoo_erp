@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Tree view for Partner Tags -->
+    <record id="view_dino_partner_tag_tree" model="ir.ui.view">
+        <field name="name">dino.partner.tag.tree</field>
+        <field name="model">dino.partner.tag</field>
+        <field name="arch" type="xml">
+            <list string="Partner Tags">
+                <field name="name"/>
+                <field name="partner_ids" widget="many2many_tags"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view for Partner Tags -->
+    <record id="view_dino_partner_tag_form" model="ir.ui.view">
+        <field name="name">dino.partner.tag.form</field>
+        <field name="model">dino.partner.tag</field>
+        <field name="arch" type="xml">
+            <form string="Partner Tag">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="partner_ids" widget="many2many_tags"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
