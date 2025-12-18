@@ -5,7 +5,7 @@
     'description': 'Минимальный Odoo модуль: одна модель `dino.minimal`, одно поле `name` и пункт меню.',
     'author': 'Revent24',
     'category': 'Tools',
-    'depends': ['base', 'mail', 'web'] ,  # minimized dependencies: vendor dino_auto_translate and internal UoM/product replacements
+    'depends': ['base', 'mail', 'web'] ,  # added sale/purchase because dino.project references sale.order and purchase.order
     'data': [
         'finance/views/bank_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
@@ -37,5 +37,6 @@
     # assets removed: category sidebar feature was rolled back
     'application': True,
     'installable': True,
+    
     'images': ['core/menu_icons/crm.png'],
 }

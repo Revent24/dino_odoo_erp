@@ -28,8 +28,24 @@ class DinoPartner(models.Model):
     inn_date = fields.Date(string=_('INN Date'))
     last_update = fields.Date(string=_('Last Update'))
     # ownership_type_id removed (ownership model deleted)
-    tax_system_ids = fields.One2many('dino.partner.tax_system', 'partner_id', string=_('Tax Systems'))
+
     contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string=_('Contacts'))
+
+    # Partner type toggles (multi-choice using booleans)
+    partner_is_customer = fields.Boolean(string=_('Customer'), default=False)
+    partner_is_vendor = fields.Boolean(string=_('Vendor'), default=False)
+
+    partner_type = fields.Char(string=_('Partner Type'), compute='_compute_partner_type')
+
+    @api.depends('partner_is_customer', 'partner_is_vendor')
+    def _compute_partner_type(self):
+        for rec in self:
+            types = []
+            if rec.partner_is_customer:
+                types.append(_('Customer'))
+            if rec.partner_is_vendor:
+                types.append(_('Vendor'))
+            rec.partner_type = ', '.join(types) if types else False
 
     @api.onchange('egrpou')
     def _onchange_egrpou(self):
@@ -200,15 +216,6 @@ class DinoPartner(models.Model):
             logging.getLogger(__name__).exception('Error updating partner on write')
 
         return res
-
-class DinoPartnerTaxSystem(models.Model):
-    _name = 'dino.partner.tax_system'
-    _description = _('Partner Tax System')
-
-    partner_id = fields.Many2one('dino.partner', string=_('Partner'), required=True, ondelete='cascade')
-    name = fields.Char(string=_('Tax System Name'), required=True, translate=True)
-    vat_rate = fields.Float(string=_('VAT Rate (%)'))
-
 class DinoPartnerContact(models.Model):
     _name = 'dino.partner.contact'
     _description = _('Partner Contact')

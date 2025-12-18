@@ -8,6 +8,7 @@
     <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
     <menuitem id="menu_dino_bank_transactions" name="Transactions" parent="menu_dino_bank_root" action="action_dino_bank_transaction" sequence="1"/>
     <menuitem id="menu_dino_bank_currency_rates" name="Currency Rates" parent="menu_dino_bank_root" action="action_dino_currency_rate" sequence="2"/>
+    <menuitem id="menu_res_currency_rates" name="System Rates" parent="menu_dino_bank_root" action="action_res_currency_rate" sequence="3"/>
     <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root" action="action_dino_bank_config" sequence="3"/>
     
     <!-- Меню Касса -->
@@ -17,6 +18,10 @@
     <!-- Меню Проекты -->
     <menuitem id="menu_dino_project_root" name="Projects" sequence="52" web_icon="dino_erp,core/menu_icons/project.png"/>
     <menuitem id="menu_dino_project_list" name="Projects List" parent="menu_dino_project_root" action="action_dino_project" sequence="1"/>
+    <menuitem id="menu_dino_project_sales" name="Sales Projects" parent="menu_dino_project_root" action="action_dino_project_sales" sequence="2"/>
+    <menuitem id="menu_dino_project_purchases" name="Purchase Projects" parent="menu_dino_project_root" action="action_dino_project_purchases" sequence="3"/>
+
+
     
     <!-- Меню Контрагенты -->
     <menuitem id="menu_dino_partners_root" name="Partners" sequence="53" web_icon="dino_erp,core/menu_icons/partners.png"/>

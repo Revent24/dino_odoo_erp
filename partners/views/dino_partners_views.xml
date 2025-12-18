@@ -7,11 +7,11 @@
             <list>
                 <field name="name"/>
                 <field name="full_name"/>
+                <field name="partner_type"/>
                 <field name="egrpou"/>
-                <field name="inn"/>
             </list>
-        </field>
-    </record>
+            </field>
+        </record>
 
     <!-- ==============================================
              FORM VIEW: Форма контрагента
@@ -27,34 +27,32 @@
                     <h1>
                         <field name="name" placeholder="Partner Name" string="Name"/>
                     </h1>
-                    <field name="full_name"/>
+                    <div>
+                        <field name="full_name"/>
+                    </div>
                 </div>
-
                     <group>
-                        <group>
+                        <group string="MAIN INFO">
                             <field name="egrpou"/>
                             <field name="inn"/>
                             <field name="inn_date"/>
                         </group>
-                        <group>
-                            <field name="date_from"/>
-                            <field name="date_to"/>
+                        <group string="TYPE">
+                                <field name="partner_is_customer" widget="boolean_toggle"/>
+                                <field name="partner_is_vendor" widget="boolean_toggle"/>
                         </group>
-                        <group>
+                        <group string="KVED">
                             <field name="kved_number"/>
                             <field name="kved"/>
                         </group>
-                        <group>
+                        <group string="CONTACT INFO">
                             <field name="address"/>
                             <field name="director"/>
                             <field name="director_gen"/>
                         </group>
-                        <group>
-                            <field name="tax_system_ids">
-                                <list editable="bottom">
-                                    <field name="name"/>
-                                </list>
-                            </field>
+                        <group string="TAX SYSTEMS">
+                            <field name="date_from"/>
+                            <field name="date_to"/>
                         </group>
                     </group>
                     <notebook>
@@ -100,18 +98,4 @@
             </kanban>
         </field>
     </record>
-
-    <!-- Tree view for Vendor Tax Systems (separate) -->
-    <record id="view_dino_partner_tax_system_tree" model="ir.ui.view">
-        <field name="name">dino.partner.tax.system.tree</field>
-        <field name="model">dino.partner.tax_system</field>
-        <field name="arch" type="xml">
-            <list>
-                <field name="partner_id"/>
-                <field name="name"/>
-                <field name="vat_rate"/>
-            </list>
-        </field>
-    </record>
-
 </odoo>
