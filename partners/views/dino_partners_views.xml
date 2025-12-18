@@ -38,7 +38,7 @@
                             <field name="inn_date"/>
                         </group>
                         <group string="Type">
-                            <field name="tag_ids" string="Type" widget="many2many_tags" required="True"/>
+                            <field name="tag_ids" string="Type" widget="many2many_tags" required="True" colors="color:color" options="{'no_create': True, 'no_create_edit': True}"/>
                         </group>
                         <group string="KVED">
                             <field name="kved_number"/>

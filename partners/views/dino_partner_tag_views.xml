@@ -8,6 +8,7 @@
             <list string="Partner Tags" editable="bottom">
                 <field name="name"/>
                 <field name="description"/>
+                <field name="color" widget="color"/>
             </list>
         </field>
     </record>

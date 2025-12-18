@@ -260,6 +260,7 @@ class DinoPartnerTag(models.Model):
 
     name = fields.Char(string='Name', required=True, translate=True)
     description = fields.Char(string='Description', translate=True)
+    color = fields.Char(string='Color Hex') # Изменено на Char для хранения шестнадцатеричного значения
     partner_ids = fields.Many2many('dino.partner', 'dino_partner_tag_rel', 'tag_id', 'partner_id', string='Partners')
 class DinoPartnerContact(models.Model):
     _name = 'dino.partner.contact'
