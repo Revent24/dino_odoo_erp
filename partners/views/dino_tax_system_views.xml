@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- List view for Tax Systems -->
+    <record id="view_dino_tax_system_list" model="ir.ui.view">
+        <field name="name">dino.tax.system.list</field>
+        <field name="model">dino.tax.system</field>
+        <field name="arch" type="xml">
+            <list string="Tax Systems" editable="bottom">
+                <field name="name"/>
+                <field name="vat_rate"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Form view for Tax Systems -->
+    <record id="view_dino_tax_system_form" model="ir.ui.view">
+        <field name="name">dino.tax.system.form</field>
+        <field name="model">dino.tax.system</field>
+        <field name="arch" type="xml">
+            <form string="Tax System">
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="vat_rate"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

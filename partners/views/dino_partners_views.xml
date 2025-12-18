@@ -52,6 +52,7 @@
                         <group string="TAX SYSTEMS">
                             <field name="date_from"/>
                             <field name="date_to"/>
+                            <field name="tax_system_id" options="{'no_create': True, 'no_open': True}"/>
                         </group>
                     </group>
                     <notebook>

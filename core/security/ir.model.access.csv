@@ -9,4 +9,5 @@ access_dino_uom,Dino UoM Access,model_dino_uom,base.group_user,1,1,1,1
 access_dino_partner,Dino Partner Access,model_dino_partner,base.group_user,1,1,1,1
 access_dino_partner_contact,Dino Partner Contact Access,model_dino_partner_contact,base.group_user,1,1,1,1
 access_dino_partner_tag,Dino Partner Tag Access,model_dino_partner_tag,base.group_user,1,1,1,1
+access_dino_tax_system,Dino Tax System Access,model_dino_tax_system,base.group_user,1,1,1,1
 
