@@ -4,6 +4,12 @@
     <menuitem id="menu_dino_minimal_root" name="Dino" sequence="40" web_icon="dino_erp,core/menu_icons/crm.png"/>
     <menuitem id="menu_dino_minimal" name="Minimal" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
     
+    
+    <!-- Меню Продажи -->
+    <menuitem id="menu_dino_sales" name="Sales" sequence="40" web_icon="dino_erp,core/menu_icons/sales.png"/>
+    <menuitem id="menu_dino_sales_list" name="Sales list" parent="menu_dino_sales" action="action_dino_project_sales" sequence="1"/>
+
+    
     <!-- Меню Банк -->
     <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
     <menuitem id="menu_dino_bank_transactions" name="Transactions" parent="menu_dino_bank_root" action="action_dino_bank_transaction" sequence="1"/>
@@ -15,10 +21,11 @@
     <menuitem id="menu_dino_cashbook_root" name="Cashbook" sequence="51" web_icon="dino_erp,core/menu_icons/cash.png"/>
     <menuitem id="menu_dino_cashbook_transactions" name="Transactions" parent="menu_dino_cashbook_root" action="action_dino_cashbook" sequence="1"/>
 
+
+
     <!-- Меню Проекты -->
     <menuitem id="menu_dino_project_root" name="Projects" sequence="52" web_icon="dino_erp,core/menu_icons/project.png"/>
     <menuitem id="menu_dino_project_list" name="Projects List" parent="menu_dino_project_root" action="action_dino_project" sequence="1"/>
-    <menuitem id="menu_dino_project_sales" name="Sales Projects" parent="menu_dino_project_root" action="action_dino_project_sales" sequence="2"/>
     <menuitem id="menu_dino_project_purchases" name="Purchase Projects" parent="menu_dino_project_root" action="action_dino_project_purchases" sequence="3"/>
 
 
@@ -32,30 +39,41 @@
               parent="menu_dino_partners_config"
               action="action_dino_partner_tag_list"
               sequence="10"/>    
-    <!-- Action for Tax Systems -->
-    <record id="action_dino_tax_system_list" model="ir.actions.act_window">
-        <field name="name">Tax Systems</field>
-        <field name="res_model">dino.tax.system</field>
-        <field name="view_mode">list,form</field>
-        <field name="help" type="html">
-            <p class="o_view_nocontent_smiling_face">
-                Create a new tax system
-            </p>
-        </field>
-    </record>
+              <!-- Action for Tax Systems -->
+              <record id="action_dino_tax_system_list" model="ir.actions.act_window">
+                  <field name="name">Tax Systems</field>
+                  <field name="res_model">dino.tax.system</field>
+                  <field name="view_mode">list,form</field>
+                  <field name="help" type="html">
+                      <p class="o_view_nocontent_smiling_face">
+                          Create a new tax system
+                      </p>
+                  </field>
+              </record>
 
-    <!-- Menu for Tax Systems (under Partners -> Configurations) -->
-    <menuitem id="menu_dino_tax_system_config"
-              name="Tax Systems"
-              parent="menu_dino_partners_config"
-              action="action_dino_tax_system_list"
-              sequence="20"/>
-    <!-- Меню Склад -->
-    <menuitem id="menu_dino_stock_root" name="Stock" sequence="60" web_icon="dino_erp,core/menu_icons/stock.png"/>
+              <!-- Menu for Tax Systems (under Partners -> Configurations) -->
+              <menuitem id="menu_dino_tax_system_config"
+                        name="Tax Systems"
+                        parent="menu_dino_partners_config"
+                        action="action_dino_tax_system_list"
+                        sequence="20"/>
+    
+    <!-- Меню Закупки -->
+    <menuitem id="menu_dino_purchases" name="Purchases" sequence="60" web_icon="dino_erp,core/menu_icons/purchases.png"/>
+    <menuitem id="menu_dino_purchases_list" name="Purchase Projects" parent="menu_dino_purchases" action="action_dino_project_purchases" sequence="3"/>
+
+
+    
+     Меню Склад -->
+    <menuitem id="menu_dino_stock_root" name="Stock" sequence="70" web_icon="dino_erp,core/menu_icons/stock.png"/>
     <menuitem id="menu_dino_stock_families" name="Components" parent="menu_dino_stock_root" action="dino_component_action" sequence="1"/>
     <menuitem id="menu_dino_stock_nomenclatures" name="Nomenclature" parent="menu_dino_stock_root" action="dino_nomenclature_action" sequence="2"/>
     <menuitem id="menu_dino_stock_config" name="Configurations" parent="menu_dino_stock_root" sequence="10"/>
     <menuitem id="menu_dino_stock_categories" name="Categories" parent="menu_dino_stock_config" action="dino_component_category_action" sequence="1"/>
     <menuitem id="menu_dino_stock_uom" name="Units of Measure" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
+  
+
+  
+  
   </data>
 </odoo>
