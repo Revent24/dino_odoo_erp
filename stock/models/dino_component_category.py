@@ -1,16 +1,19 @@
 # --- МОДЕЛЬ: РАСШИРЕНИЕ КАТЕГОРИЙ (Настройка видимости BOM)
 # --- ФАЙЛ: models/dino_component_category.py
 
-from odoo import fields, models, _
+from odoo import api, fields, models, _
 
 class DinoComponentCategory(models.Model):
     _name = 'dino.component.category'
     _description = 'Dino Component Category'
     _table = 'product_category'
+    _bulk_update_fields = ['origin_type', 'hide_specification']
 
     name = fields.Char(string=_('Category'), required=True)
     parent_id = fields.Many2one('dino.component.category', string=_('Parent'))
     active = fields.Boolean(default=True)
+
+    display_name = fields.Char(compute='_compute_display_name', store=True, string=_('Display Name'))
 
     # Галочка, которая будет управлять видимостью вкладки BOM
     hide_specification = fields.Boolean(string=_('Hide Specification'), default=False)
@@ -22,6 +25,17 @@ class DinoComponentCategory(models.Model):
         ('service', 'Service'),            # Услуга
         ('production', 'Manufacturing')    # Производство
     ], string=_('Origin Type'), default='purchase', help="Defines the origin of the component family.")
+
+    @api.depends('name', 'parent_id')
+    def _compute_display_name(self):
+        for rec in self:
+            names = []
+            current = rec
+            while current:
+                names.append(current.name)
+                current = current.parent_id
+            names.reverse()
+            rec.display_name = '/'.join(names)
 
     # === НОВЫЕ СЧЕТЧИКИ ===
     dino_component_count = fields.Integer(compute='_compute_dino_counts')

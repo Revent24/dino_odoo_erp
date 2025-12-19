@@ -28,6 +28,7 @@ class DinoPartner(models.Model):
     inn_date = fields.Date(string='INN Date')
     last_update = fields.Date(string='Last Update')
     tax_system_id = fields.Many2one('dino.tax.system', string='Tax System')
+    category_id = fields.Many2one('dino.component.category', string='Default Category')
     # ownership_type_id removed (ownership model deleted)
 
     contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string='Contacts')

@@ -13,9 +13,11 @@
       <field name="name">dino.component.category.view.list</field>
       <field name="model">dino.component.category</field>
       <field name="arch" type="xml">
-        <list string="Categories">
-          <field name="name"/>
+        <list string="Categories" editable="top">
+          <field name="display_name"/>
           <field name="parent_id"/>
+          <field name="origin_type"/>
+          <field name="hide_specification" widget="boolean"/>
           <field name="active"/>
         </list>
       </field>
