@@ -1,6 +1,21 @@
 <odoo>
-    <data>
-        <!-- Tree View -->
+        <data>
+                <!--
+                        Файл представлений для модели dino.project
+
+                        Описание для разработчиков:
+                        - Содержит tree/form представления и соответствующие действия (act_window)
+                            для трёх типов проектов: sale, purchase, overhead.
+                        - Действия используют контекст `default_project_type`, чтобы при создании
+                            новой записи через соответствующее действие поле `project_type` устанавливалось
+                            автоматически.
+                        - Главный action `action_dino_project` имеет домен, исключающий продажи
+                            (project_type != 'sale'), и контекст по умолчанию 'overhead'.
+                        - Для добавления нового типа проекта: добавьте значение в selection
+                            `project_type` в модели, затем создайте соответствующие view и action
+                            по образцу существующих блоков.
+                -->
+        <!-- Дерево: список проектов -->
         <record id="view_dino_project_tree" model="ir.ui.view">
             <field name="name">dino.project.tree</field>
             <field name="model">dino.project</field>
@@ -14,29 +29,40 @@
             </field>
         </record>
 
-        <!-- Form View -->
+        <!-- Форма: форма проекта -->
         <record id="view_dino_project_form" model="ir.ui.view">
             <field name="name">dino.project.form</field>
             <field name="model">dino.project</field>
             <field name="arch" type="xml">
                 <form string="Project">
                     <sheet>
+                        <widget name="web_ribbon" title="ПРОДАЖА" bg_color="bg-success" invisible="project_type != 'sale'"/>
+                        <widget name="web_ribbon" title="ЗАКУПКА" bg_color="bg-warning" invisible="project_type != 'purchase'"/>
+                        <widget name="web_ribbon" title="РАСХОД" bg_color="bg-danger" invisible="project_type != 'overhead'"/>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name" placeholder="Project Name"
+                                string="Name"
+                                required="1"/>
+                            </h1>
+                        </div>
                         <group>
-                            <field name="name" required="1"/>
                             <field name="date" required="1"/>
                             <field name="project_type" widget="radio" options="{'horizontal': True}" required="1"/>
                             <field name="partner_id" options="{'no_create': False}"/>
                         </group>
                     </sheet>
+                    <chatter/>
                 </form>
             </field>
         </record>
 
-        <!-- Action for Project Model -->
+        <!-- Действие: общий список проектов (за исключением продаж) -->
         <record id="action_dino_project" model="ir.actions.act_window">
             <field name="name">Projects</field>
             <field name="res_model">dino.project</field>
             <field name="view_mode">list,form</field>
+            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree'),'tree'),(ref('dino_erp.view_dino_project_form'),'form')]"/>
             <field name="context">{'default_project_type': 'overhead'}</field>
             <field name="domain">[('project_type','!=','sale')]</field>
             <field name="help" type="html">
@@ -46,47 +72,9 @@
             </field>
         </record>
 
-        <!-- Sales projects: views and action -->
-        <record id="view_dino_project_tree_sale" model="ir.ui.view">
-            <field name="name">dino.project.tree.sale</field>
-            <field name="model">dino.project</field>
-            <field name="arch" type="xml">
-                <list string="Sales Projects">
-                    <field name="name"/>
-                    <field name="date"/>
-                    <field name="order_ref"/>
-                    <field name="partner_id" options="{'no_create': False}"/>
-                </list>
-            </field>
-        </record>
+        <!-- Sales views moved to projects/views/dino_project_views_sale.xml -->
 
-        <record id="view_dino_project_form_sale" model="ir.ui.view">
-            <field name="name">dino.project.form.sale</field>
-            <field name="model">dino.project</field>
-            <field name="arch" type="xml">
-                <form string="Sales Project">
-                    <sheet>
-                        <group>
-                            <field name="name" required="1"/>
-                            <field name="date" required="1"/>
-                            <field name="order_ref"/>
-                            <field name="partner_id" options="{'no_create': False}"/>
-                        </group>
-                    </sheet>
-                </form>
-            </field>
-        </record>
-
-        <record id="action_dino_project_sales" model="ir.actions.act_window">
-            <field name="name">Sales Projects</field>
-            <field name="res_model">dino.project</field>
-            <field name="view_mode">list,form</field>
-            <field name="context">{'default_project_type': 'sale'}</field>
-            <field name="domain">[('project_type','=','sale')]</field>
-            <field name="view_id" ref="dino_erp.view_dino_project_tree_sale"/>
-        </record>
-
-        <!-- Purchase projects: views and action -->
+        <!-- Проекты закупок: представления и действие -->
         <record id="view_dino_project_tree_purchase" model="ir.ui.view">
             <field name="name">dino.project.tree.purchase</field>
             <field name="model">dino.project</field>
@@ -95,7 +83,7 @@
                     <field name="name"/>
                     <field name="date"/>
                     <field name="order_ref"/>
-                    <field name="partner_id" options="{'no_create': False}"/>
+                    <field name="partner_id" options="{'no_create': False}" context="{'partner_role_filter':'vendor','default_partner_role':'vendor'}"/>
                 </list>
             </field>
         </record>
@@ -106,11 +94,12 @@
             <field name="arch" type="xml">
                 <form string="Purchase Project">
                     <sheet>
+                        <widget name="web_ribbon" title="ЗАКУПКА" bg_color="bg-warning"/>
                         <group>
                             <field name="name" required="1"/>
                             <field name="date" required="1"/>
                             <field name="order_ref"/>
-                            <field name="partner_id" options="{'no_create': False}"/>
+                            <field name="partner_id" options="{'no_create': False}" domain="[('tag_ids.role','=','vendor')]" context="{'partner_role_filter':'vendor','default_partner_role':'vendor'}"/>
                         </group>
                     </sheet>
                 </form>
@@ -121,9 +110,49 @@
             <field name="name">Purchase Projects</field>
             <field name="res_model">dino.project</field>
             <field name="view_mode">list,form</field>
-            <field name="context">{'default_project_type': 'purchase'}</field>
+            <field name="context">{'default_project_type': 'purchase', 'partner_role_filter': 'vendor', 'default_partner_role': 'vendor'}</field>
             <field name="domain">[('project_type','=','purchase')]</field>
-            <field name="view_id" ref="dino_erp.view_dino_project_tree_purchase"/>
+            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_purchase'),'tree'),(ref('dino_erp.view_dino_project_form_purchase'),'form')]"/>
+        </record>
+
+        <!-- Непроизводственные проекты (overhead): представления и действие -->
+        <record id="view_dino_project_tree_overhead" model="ir.ui.view">
+            <field name="name">dino.project.tree.overhead</field>
+            <field name="model">dino.project</field>
+            <field name="arch" type="xml">
+                <list string="Overhead Projects">
+                    <field name="name"/>
+                    <field name="date"/>
+                    <field name="partner_id" options="{'no_create': False}"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_dino_project_form_overhead" model="ir.ui.view">
+            <field name="name">dino.project.form.overhead</field>
+            <field name="model">dino.project</field>
+            <field name="arch" type="xml">
+                <form string="Overhead Project">
+                    <sheet>
+                        <widget name="web_ribbon" title="РАСХОД" bg_color="bg-danger"/>
+                        <group>
+                            <field name="name" required="1"/>
+                            <field name="date" required="1"/>
+                            <field name="project_type" invisible="1"/>
+                            <field name="partner_id" options="{'no_create': False}"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dino_project_overhead" model="ir.actions.act_window">
+            <field name="name">Overhead Projects</field>
+            <field name="res_model">dino.project</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'default_project_type': 'overhead'}</field>
+            <field name="domain">[('project_type','=','overhead')]</field>
+            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_overhead'),'tree'),(ref('dino_erp.view_dino_project_form_overhead'),'form')]"/>
         </record>
 
     </data>

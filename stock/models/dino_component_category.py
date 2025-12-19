@@ -32,10 +32,11 @@ class DinoComponentCategory(models.Model):
             names = []
             current = rec
             while current:
-                names.append(current.name)
+                if current.name:
+                    names.append(current.name)
                 current = current.parent_id
             names.reverse()
-            rec.display_name = '/'.join(names)
+            rec.display_name = '/'.join(names) if names else False
 
     # === НОВЫЕ СЧЕТЧИКИ ===
     dino_component_count = fields.Integer(compute='_compute_dino_counts')

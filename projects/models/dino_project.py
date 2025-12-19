@@ -3,6 +3,7 @@ from odoo import api, fields, models, _
 
 class DinoProject(models.Model):
     _name = 'dino.project'
+    _inherit = ['mail.thread', 'mail.activity.mixin']
     _description = _('Project')
 
     name = fields.Char(string=_('Project Name'), required=True)
@@ -13,7 +14,7 @@ class DinoProject(models.Model):
         ('sale', 'Sales'),
         ('purchase', 'Purchases'),
         ('overhead', 'Overhead')
-    ], string=_('Project Type'), default=False, required=True, index=True)
+    ], string=_('Project Type'), default=False, required=True, index=True, tracking=True)
 
     # Reference to linked order (sale or purchase) without requiring external modules
     order_ref = fields.Reference(selection=[('sale.order', 'Sale Order'), ('purchase.order', 'Purchase Order')], string=_('Linked Order'))

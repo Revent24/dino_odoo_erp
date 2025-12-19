@@ -5,6 +5,7 @@ from datetime import datetime
 import requests
 
 from odoo import models, fields, _, api
+from odoo.osv import expression
 
 
 class DinoPartner(models.Model):
@@ -213,7 +214,32 @@ class DinoPartner(models.Model):
                 record.action_update_from_registry()
         except Exception:
             logging.getLogger(__name__).exception('Error updating partner on create: %s', record.id)
+        # Auto-assign tag based on context default_partner_role (set by actions)
+        try:
+            ctx_role = (self.env.context or {}).get('default_partner_role')
+            if ctx_role:
+                Tag = self.env['dino.partner.tag']
+                tag = Tag.search([('role', '=', ctx_role)], limit=1)
+                if not tag:
+                    # create a minimal tag if missing
+                    tag = Tag.create({'name': ctx_role.capitalize(), 'role': ctx_role})
+                record.write({'tag_ids': [(4, tag.id)]})
+        except Exception:
+            logging.getLogger(__name__).exception('Error assigning default tag on create for %s', record.id)
         return record
+
+    def name_search(self, name='', args=None, operator='ilike', limit=100):
+        """Restrict name search by partner role when `partner_role_filter` is present in context.
+
+        This affects the Many2one autocomplete and ensures only partners with
+        a tag of the requested role are returned.
+        """
+        args = args or []
+        ctx = self.env.context or {}
+        role = ctx.get('partner_role_filter') or ctx.get('default_partner_role')
+        if role:
+            args = expression.AND([args, [('tag_ids.role', '=', role)]])
+        return super(DinoPartner, self).name_search(name, args, operator, limit)
 
     def write(self, vals):
         # Determine which records will have changed egrpou
@@ -243,8 +269,8 @@ class DinoPartner(models.Model):
         """
         Tag = self.env['dino.partner.tag']
         partner = self.env['dino.partner']
-        customer_tag = Tag.search([('name', '=', 'Customer')], limit=1) or Tag.create({'name': 'Customer'})
-        vendor_tag = Tag.search([('name', '=', 'Vendor')], limit=1) or Tag.create({'name': 'Vendor'})
+        customer_tag = Tag.search([('name', '=', 'Customer')], limit=1) or Tag.create({'name': 'Customer', 'role': 'customer'})
+        vendor_tag = Tag.search([('name', '=', 'Vendor')], limit=1) or Tag.create({'name': 'Vendor', 'role': 'vendor'})
 
         # Assign tags for partners with booleans
         cust_partners = partner.search([('partner_is_customer', '=', True)])
@@ -259,10 +285,14 @@ class DinoPartner(models.Model):
 class DinoPartnerTag(models.Model):
     _name = 'dino.partner.tag'
     _description = 'Partner Tag'
-
     name = fields.Char(string='Name', required=True, translate=True)
     description = fields.Char(string='Description', translate=True)
     color = fields.Char(string='Color Hex') # Изменено на Char для хранения шестнадцатеричного значения
+    role = fields.Selection([
+        ('customer', 'Customer'),
+        ('vendor', 'Vendor'),
+        ('other', 'Other'),
+    ], string='Role', default='other', help='Role of this tag for partner filtering')
     partner_ids = fields.Many2many('dino.partner', 'dino_partner_tag_rel', 'tag_id', 'partner_id', string='Partners')
 class DinoPartnerContact(models.Model):
     _name = 'dino.partner.contact'

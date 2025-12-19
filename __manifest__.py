@@ -12,6 +12,7 @@
         'finance/views/dino_currency_rate_views.xml',
         'finance/views/dino_cashbook_views.xml',
         'core/views/minimal_views.xml',
+        'projects/views/dino_project_views_sale.xml',
         'projects/views/dino_project_views.xml',
 
         # Core security and shared data

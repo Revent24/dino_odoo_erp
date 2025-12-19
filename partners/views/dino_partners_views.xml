@@ -42,16 +42,7 @@
                             <field name="tax_system_id" options="{'no_create': True, 'no_open': False}"/>
                             <field name="category_id" string="Vendor Category" options="{'no_create': True, 'no_open': False}" domain="[('origin_type', '!=', 'production')]" invisible="1 not in tag_ids"/>
                         </group>
-                        <group string="KVED">
-                            <field name="kved_number"/>
-                            <field name="kved"/>
-                            <field name="date_from"/>
-                        </group>
-                        <group string="CONTACT INFO">
-                            <field name="address"/>
-                            <field name="director"/>
-                            <field name="director_gen"/>
-                        </group>
+                        
                     </group>
                     <notebook>
                         <page string="Contacts">
@@ -63,6 +54,18 @@
                                     <field name="email"/>
                                 </list>
                             </field>
+                        </page>
+                            <page string="Info">
+                                <group string="KVED">
+                                <field name="kved_number"/>
+                                <field name="kved"/>
+                                <field name="date_from"/>
+                            </group>
+                            <group string="CONTACT INFO">
+                                <field name="address"/>
+                                <field name="director"/>
+                                <field name="director_gen"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>

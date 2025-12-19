@@ -1,0 +1,45 @@
+<odoo>
+    <data>
+        <!-- Представления и действие для проектов продаж (отдельный файл) -->
+        <record id="view_dino_project_tree_sale" model="ir.ui.view">
+            <field name="name">dino.project.tree.sale</field>
+            <field name="model">dino.project</field>
+            <field name="arch" type="xml">
+                <list string="Sales Projects">
+                    <field name="name"/>
+                    <field name="date"/>
+                    <field name="order_ref"/>
+                    <field name="partner_id" options="{'no_create': False}" context="{'partner_role_filter':'customer','default_partner_role':'customer'}"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_dino_project_form_sale" model="ir.ui.view">
+            <field name="name">dino.project.form.sale</field>
+            <field name="model">dino.project</field>
+            <field name="arch" type="xml">
+                <form string="Sales Project">
+                    <sheet>
+                        <widget name="web_ribbon" title="ПРОДАЖА" bg_color="bg-success"/>
+                        <group>
+                            <field name="name" required="1"/>
+                            <field name="date" required="1"/>
+                            <field name="order_ref"/>
+                            <field name="partner_id" options="{'no_create': False}" domain="[('tag_ids.role','=','customer')]" context="{'partner_role_filter':'customer','default_partner_role':'customer'}"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dino_project_sales" model="ir.actions.act_window">
+            <field name="name">Sales Projects</field>
+            <field name="res_model">dino.project</field>
+            <field name="view_mode">list,form</field>
+            <field name="context">{'default_project_type': 'sale', 'partner_role_filter': 'customer', 'default_partner_role': 'customer'}</field>
+            <field name="domain">[('project_type','=','sale')]</field>
+            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_sale'),'tree'),(ref('dino_erp.view_dino_project_form_sale'),'form')]"/>
+        </record>
+
+    </data>
+</odoo>
