@@ -1,0 +1,14 @@
+--- a/projects/views/dino_project_views.xml
++++ b/projects/views/dino_project_views.xml
+@@
+-            <field name="view_mode">list,form</field>
+-            <field name="domain">[('project_type','=','sale')]</field>
++            <field name="view_mode">list,form</field>
++            <field name="context">{'default_project_type': 'sale'}</field>
++            <field name="domain">[('project_type','=','sale')]</field>
+@@
+-            <field name="view_mode">list,form</field>
+-            <field name="domain">[('project_type','=','purchase')]</field>
++            <field name="view_mode">list,form</field>
++            <field name="context">{'default_project_type': 'purchase'}</field>
++            <field name="domain">[('project_type','=','purchase')]</field>
