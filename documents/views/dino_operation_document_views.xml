@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ==============================================
+             FORM VIEW: Форма документа операции
+             Содержит: основные поля, спецификацию, итоги
+             ============================================== -->
+        <record id="view_dino_operation_document_form_v3" model="ir.ui.view">
+            <field name="name">dino.operation.document.form</field>
+            <field name="model">dino.operation.document</field>
+            <field name="priority">16</field>
+            <field name="type">form</field>
+            <field name="arch" type="xml">
+                <form string="Document" display="horizontal">
+                    <!-- Кнопка импорта спецификации из Excel -->
+                    <header>
+                        <button name="%(action_import_specification_excel)d" 
+                                type="action" 
+                                string="Import Excel" 
+                                icon="fa-file-excel-o"
+                                class="btn-secondary"/>
+                    </header>
+                    <sheet>
+                        <!-- Заголовок: Тип документа -->
+                        <div class="oe_title">
+                            <h1 style="width: 120%;">
+                                <field name="document_type" widget="selection" nolabel="1"/>
+                            </h1>
+                        </div>
+                        <!-- Основные поля: номер, дата, партнер, валюта -->
+                        <group>
+                            <group>
+                                <field name="number"/>
+                                <field name="date"/>
+                            </group>
+                            <group>
+                                <field name="project_id"/>
+                                <field name="partner_id"/>
+                                <field name="currency_id"/>
+                                <field name="vat_rate"/>
+                            </group>
+                        </group>
+
+                        <!-- Вкладки: Спецификация и Примечания -->
+                        <notebook>
+                            <page string="Nomenclature" name="specification">
+                                <!-- Спецификация: редактируемый список с handle для сортировки -->
+                                <field name="specification_ids" context="{'default_document_id': id}">
+                                    <list string="Nomenclature" editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="line_number" string="№"/>
+                                        <field name="name" string="Supplier Item"/>
+                                        <field name="supplier_nomenclature_id" string="Supplier Item Mapping" context="{'default_partner_id': parent.partner_id}" options="{'no_open': True}"/>
+                                        <field name="nomenclature_id" 
+                                               string="Stock Item"
+                                               widget="many2one"
+                                               options="{'no_quick_create': True}"
+                                               context="{
+                                                   'default_name': name, 
+                                                   'supplier_item_name': name,
+                                                   'form_view_ref': 'dino_erp.view_nomenclature_quick_create_form'
+                                               }"/>
+                                        <field name="quantity" string="Qty"/>
+                                        <field name="uom_id" string="Unit"/>
+                                        <field name="price_untaxed" string="Price"/>
+                                        <field name="price_tax" string="Price w/Tax"/>
+                                        <field name="amount_total" string="Amount w/Tax"/>
+                                    </list>
+                                </field>
+                            </page>
+
+                            <!-- Примечания: HTML-поле для дополнительной информации -->
+                            <page string="Notes" name="notes">
+                                <field name="notes"/>
+                            </page>
+                        </notebook>
+
+                        <!-- Итоги: Сумма без НДС, НДС, Общая сумма (выровнено справа) -->
+                        <group>
+                            <group>
+                            </group>
+
+                            <group class="oe_subtotal_footer oe_right">
+                                
+                                <field name="amount_untaxed" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}"/>
+                                
+                                <field name="amount_tax" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}"/>
+                                
+                                <field name="amount_total" 
+                                       class="oe_subtotal_footer_separator" 
+                                       widget="monetary" 
+                                       options="{'currency_field': 'currency_id'}"/>
+                            </group>
+                        </group>
+                        <div class="oe_clear"/>
+                    </sheet>
+                    <chatter/>
+                </form>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             TREE VIEW: Список документов
+             ============================================== -->
+        <record id="view_dino_operation_document_tree" model="ir.ui.view">
+            <field name="name">dino.operation.document.tree</field>
+            <field name="model">dino.operation.document</field>
+            <field name="arch" type="xml">
+                <list string="Documents">
+                    <field name="document_type"/>
+                    <field name="number"/>
+                    <field name="date"/>
+                    <field name="project_id"/>
+                    <field name="amount_total" sum="Total"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             ACTION: Открытие списка документов
+             ============================================== -->
+        <record id="action_dino_operation_document_list" model="ir.actions.act_window">
+            <field name="name">Documents</field>
+            <field name="res_model">dino.operation.document</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+        <!-- ==============================================
+             TREE VIEW: История цен поставщиков (для смарт-кнопки из номенклатуры)
+             Показывает: Дата, Документ, Поставщик, Название поставщика, Количество, Цены
+             ============================================== -->
+        <record id="view_specification_price_history_tree" model="ir.ui.view">
+            <field name="name">dino.operation.document.specification.price.history</field>
+            <field name="model">dino.operation.document.specification</field>
+            <field name="priority">20</field>
+            <field name="arch" type="xml">
+                <list string="Price History" create="false" edit="false">
+                    <field name="document_date" string="Date"/>
+                    <field name="document_id" string="Document" optional="hide"/>
+                    <field name="document_number" string="Doc #"/>
+                    <field name="partner_id" string="Partner"/>
+                    <field name="name" string="Supplier Item Name"/>
+                    <field name="quantity" string="Quantity"/>
+                    <field name="uom_id" string="Unit"/>
+                    <field name="price_untaxed" string="Price w/o VAT" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="price_tax" string="Price with VAT" widget="monetary" options="{'currency_field': 'currency_id'}"/>
+                    <field name="currency_id" column_invisible="True"/>
+                </list>
+            </field>
+        </record>
+    </data>
+</odoo>

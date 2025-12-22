@@ -28,6 +28,7 @@
                 </list>
             </field>
         </record>
+        
 
         <!-- Форма: форма проекта -->
         <record id="view_dino_project_form" model="ir.ui.view">
@@ -39,6 +40,7 @@
                         <widget name="web_ribbon" title="ПРОДАЖА" bg_color="bg-success" invisible="project_type != 'sale'"/>
                         <widget name="web_ribbon" title="ЗАКУПКА" bg_color="bg-warning" invisible="project_type != 'purchase'"/>
                         <widget name="web_ribbon" title="РАСХОД" bg_color="bg-danger" invisible="project_type != 'overhead'"/>
+
                         <div class="oe_title">
                             <h1>
                                 <field name="name" placeholder="Project Name"
@@ -50,7 +52,25 @@
                             <field name="date" required="1"/>
                             <field name="project_type" widget="radio" options="{'horizontal': True}" required="1"/>
                             <field name="partner_id" options="{'no_create': False}"/>
+                            <field name="vat_rate" readonly="1"/>
+                            <field name="document_count" readonly="1"/>
                         </group>
+
+                        <notebook>
+                            <page string="Documents" name="documents">
+                                <field name="document_ids" context="{'default_project_id': id}" widget="one2many_list" views="[(False, 'list'),(False, 'form')]" >
+                                    <list string="Documents" editable="bottom">
+                                        <field name="sequence" widget="handle"/>
+                                        <field name="document_type"/>
+                                        <field name="number"/>
+                                        <field name="date"/>
+                                        <field name="partner_id"/>
+                                        <field name="amount_total"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
+
                     </sheet>
                     <chatter/>
                 </form>

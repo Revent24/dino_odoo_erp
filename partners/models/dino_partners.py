@@ -29,13 +29,68 @@ class DinoPartner(models.Model):
     inn_date = fields.Date(string='INN Date')
     last_update = fields.Date(string='Last Update')
     tax_system_id = fields.Many2one('dino.tax.system', string='Tax System')
+    vat_rate = fields.Float(string='VAT Rate (%)', compute='_compute_vat_rate', store=False, readonly=True)
     category_id = fields.Many2one('dino.component.category', string='Default Category')
     # ownership_type_id removed (ownership model deleted)
 
     contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string='Contacts')
 
+    project_ids = fields.One2many('dino.project', 'partner_id', string='Projects')
+    project_count = fields.Integer(string='Projects', compute='_compute_project_count')
+
+    partner_nomenclature_ids = fields.One2many('dino.partner.nomenclature', 'partner_id', string='Nomenclature Mapping')
+    partner_nomenclature_count = fields.Integer(string='Nomenclature', compute='_compute_partner_nomenclature_count')
+
+    document_ids = fields.One2many('dino.operation.document', 'partner_id', string='Documents')
+    document_count = fields.Integer(string='Documents', compute='_compute_document_count')
+
+    def _compute_partner_nomenclature_count(self):
+        for rec in self:
+            rec.partner_nomenclature_count = self.env['dino.partner.nomenclature'].search_count([('partner_id', '=', rec.id)])
+
+    def action_view_partner_nomenclature(self):
+        self.ensure_one()
+        return {
+            'name': 'Nomenclature',
+            'type': 'ir.actions.act_window',
+            'res_model': 'dino.partner.nomenclature',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.id)],
+            'context': {'default_partner_id': self.id},
+        }
+
     # Partner type toggles (legacy booleans kept for compatibility)
     partner_is_customer = fields.Boolean(string='Customer', default=False)
+
+    def _compute_project_count(self):
+        for rec in self:
+            rec.project_count = self.env['dino.project'].search_count([('partner_id', '=', rec.id)])
+
+    def action_view_projects(self):
+        self.ensure_one()
+        return {
+            'name': 'Projects',
+            'type': 'ir.actions.act_window',
+            'res_model': 'dino.project',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.id)],
+            'context': {'default_partner_id': self.id},
+        }
+
+    def _compute_document_count(self):
+        for rec in self:
+            rec.document_count = self.env['dino.operation.document'].search_count([('partner_id', '=', rec.id)])
+
+    def action_view_documents(self):
+        self.ensure_one()
+        return {
+            'name': 'Documents',
+            'type': 'ir.actions.act_window',
+            'res_model': 'dino.operation.document',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.id)],
+            'context': {'default_partner_id': self.id},
+        }
     partner_is_vendor = fields.Boolean(string='Vendor', default=False)
 
     # New: tags/multi-choice for partner types
@@ -91,6 +146,23 @@ class DinoPartner(models.Model):
     # Do not redefine message_follower_ids here — mail.thread provides followers/messages fields
     def _get_fields_to_translate(self):
         return ['name', 'full_name']
+
+    @api.depends('tax_system_id', 'tag_ids')
+    def _compute_vat_rate(self):
+        for rec in self:
+            if rec.tax_system_id and rec.tax_system_id.vat_rate is not None:
+                rec.vat_rate = rec.tax_system_id.vat_rate
+            else:
+                rec.vat_rate = 0.0
+
+    @api.onchange('tag_ids')
+    def _onchange_tag_ids_update_vat(self):
+        """Recompute vat_rate when tags change (in case tax system is changed by external logic)."""
+        for rec in self:
+            if rec.tax_system_id and rec.tax_system_id.vat_rate is not None:
+                rec.vat_rate = rec.tax_system_id.vat_rate
+            else:
+                rec.vat_rate = 0.0
 
     @staticmethod
     def _parse_date_str(d):

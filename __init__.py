@@ -1,1 +1,1 @@
-from . import core, finance, projects, stock, partners
+from . import core, finance, documents, projects, stock, partners

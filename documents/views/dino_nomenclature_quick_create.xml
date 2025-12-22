@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ==============================================
+         QUICK CREATE FORM: Упрощенная форма создания номенклатуры
+         Используется при создании из поля nomenclature_id в спецификации
+         ============================================== -->
+    <record id="view_nomenclature_quick_create_form" model="ir.ui.view">
+        <field name="name">dino.nomenclature.form.quick</field>
+        <field name="model">dino.nomenclature</field>
+        <field name="priority">1000</field>
+        <field name="arch" type="xml">
+            <form string="Create Nomenclature Item">
+                <group>
+                    <!-- Название от поставщика (только для справки) -->
+                    <field name="fullname" invisible="1"/>
+                    <label for="fullname" string="Supplier Name:" class="o_form_label"/>
+                    <div class="o_row">
+                        <span class="text-muted">
+                            Create nomenclature for this supplier item
+                        </span>
+                    </div>
+                    
+                    <separator string="Nomenclature Structure"/>
+                    
+                    <!-- Выбор/создание компонента (родителя) -->
+                    <field name="component_id" 
+                           string="Component (Family)"
+                           required="1"
+                           options="{'no_create_edit': True}"/>
+                    
+                    <!-- Название исполнения (модификация) -->
+                    <field name="name" 
+                           string="Execution (Variant)"
+                           required="1"
+                           placeholder="e.g. 16mm, Galvanized, etc."/>
+                    
+                    <!-- Артикул (опционально) -->
+                    <field name="code" string="Reference (optional)"/>
+                </group>
+            </form>
+        </field>
+    </record>
+</odoo>

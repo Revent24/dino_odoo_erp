@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <menuitem id="menu_dino_minimal_root" name="Dino" sequence="40" web_icon="dino_erp,core/menu_icons/crm.png"/>
-    <menuitem id="menu_dino_minimal" name="Minimal" parent="menu_dino_minimal_root" action="action_dino_minimal" sequence="1"/>
-    
-    
+      
     <!-- Меню Продажи -->
     <menuitem id="menu_dino_sales" name="Sales" sequence="40" web_icon="dino_erp,core/menu_icons/sales.png"/>
     <menuitem id="menu_dino_sales_list" name="Sales list" parent="menu_dino_sales" action="action_dino_project_sales" sequence="1"/>
@@ -17,10 +14,10 @@
     <menuitem id="menu_res_currency_rates" name="System Rates" parent="menu_dino_bank_root" action="action_res_currency_rate" sequence="3"/>
     <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root" action="action_dino_bank_config" sequence="3"/>
     
+
     <!-- Меню Касса -->
     <menuitem id="menu_dino_cashbook_root" name="Cashbook" sequence="51" web_icon="dino_erp,core/menu_icons/cash.png"/>
     <menuitem id="menu_dino_cashbook_transactions" name="Transactions" parent="menu_dino_cashbook_root" action="action_dino_cashbook" sequence="1"/>
-
 
 
     <!-- Меню Проекты -->
@@ -29,9 +26,14 @@
     <menuitem id="menu_dino_project_purchases" name="Purchase Projects" parent="menu_dino_project_root" action="action_dino_project_purchases" sequence="3"/>
 
 
-    
+    <!-- Меню Документы -->
+    <menuitem id="menu_dino_documents_root" name="Documents" sequence="53" web_icon="dino_erp,core/menu_icons/docs.png"/>
+    <menuitem id="menu_dino_document_list" name="Document List" parent="menu_dino_documents_root" action="action_dino_operation_document_list" sequence="1"/>
+    <menuitem id="menu_dino_document_specifications" name="Specifications" parent="menu_dino_documents_root" action="action_dino_operation_document_specification_list" sequence="2"/>
+  
+
     <!-- Меню Контрагенты -->
-    <menuitem id="menu_dino_partners_root" name="Partners" sequence="53" web_icon="dino_erp,core/menu_icons/partners.png"/>
+    <menuitem id="menu_dino_partners_root" name="Partners" sequence="54" web_icon="dino_erp,core/menu_icons/partners.png"/>
     <menuitem id="menu_dino_partner_main" name="Partner List" parent="menu_dino_partners_root" action="action_dino_partner_list" sequence="1"/>
     <menuitem id="menu_dino_partners_config" name="Configurations" parent="menu_dino_partners_root" sequence="10"/>
     <menuitem id="menu_dino_partner_tag_config"
@@ -64,7 +66,7 @@
 
 
     
-     Меню Склад -->
+    <!-- Меню Склад -->
     <menuitem id="menu_dino_stock_root" name="Stock" sequence="70" web_icon="dino_erp,core/menu_icons/stock.png"/>
     <menuitem id="menu_dino_stock_families" name="Components" parent="menu_dino_stock_root" action="dino_component_action" sequence="1"/>
     <menuitem id="menu_dino_stock_nomenclatures" name="Nomenclature" parent="menu_dino_stock_root" action="dino_nomenclature_action" sequence="2"/>

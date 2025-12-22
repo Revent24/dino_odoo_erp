@@ -5,13 +5,20 @@
     'description': 'Минимальный Odoo модуль: одна модель `dino.minimal`, одно поле `name` и пункт меню.',
     'author': 'Revent24',
     'category': 'Tools',
-    'depends': ['base', 'mail', 'web'] ,  # added sale/purchase because dino.project references sale.order and purchase.order
+    'depends': ['base', 'mail', 'web', 'uom'] ,  # added uom for document lines and quick-create
     'data': [
         'finance/views/bank_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
         'finance/views/dino_currency_rate_views.xml',
         'finance/views/dino_cashbook_views.xml',
         'core/views/minimal_views.xml',
+
+        # Documents module views (moved before projects to ensure views validate)
+        'documents/wizard/import_specification_excel_views.xml',
+        'documents/views/dino_operation_document_views.xml',
+        'documents/views/dino_operation_document_specification_views.xml',
+        'documents/views/dino_nomenclature_quick_create.xml',
+
         'projects/views/dino_project_views_sale.xml',
         'projects/views/dino_project_views.xml',
 
@@ -32,6 +39,8 @@
         'partners/views/dino_partners_views.xml',
         'partners/views/dino_partner_tag_views.xml',
         'partners/views/dino_tax_system_views.xml',
+
+
 
         'finance/data/ir_cron_data.xml',
         'core/views/menu.xml',
