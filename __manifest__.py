@@ -37,6 +37,7 @@
 
         'partners/views/dino_partners_actions.xml',
         'partners/views/dino_partners_views.xml',
+        'partners/views/dino_partner_nomenclature_views.xml',
         'partners/views/dino_partner_tag_views.xml',
         'partners/views/dino_tax_system_views.xml',
 

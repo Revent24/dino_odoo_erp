@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- List view: Partner Nomenclature (inline editable) -->
+        <record id="view_dino_partner_nomenclature_list" model="ir.ui.view">
+            <field name="name">dino.partner.nomenclature.list</field>
+            <field name="model">dino.partner.nomenclature</field>
+            <field name="arch" type="xml">
+                <list string="Partner Nomenclature" editable="bottom">
+                    <field name="sequence" widget="handle"/>
+                    <field name="name"/>
+                    <field name="nomenclature_id"/>
+                    <field name="uom_id"/>
+                    <field name="active"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Form view: quick edit for mapping -->
+        <record id="view_dino_partner_nomenclature_form" model="ir.ui.view">
+            <field name="name">dino.partner.nomenclature.form</field>
+            <field name="model">dino.partner.nomenclature</field>
+            <field name="arch" type="xml">
+                <form string="Partner Nomenclature">
+                    <sheet>
+                        <group>
+                            <field name="partner_id"/>
+                            <field name="name"/>
+                            <field name="nomenclature_id"/>
+                            <field name="uom_id"/>
+                            <field name="active"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>
