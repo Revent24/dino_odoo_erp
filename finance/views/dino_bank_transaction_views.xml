@@ -5,8 +5,9 @@
             <field name="model">dino.bank.transaction</field>
             <field name="arch" type="xml">
                 <list string="Bank Transactions">
-                    <field name="name"/>
-                    <field name="date"/>
+                    <field name="datetime"/>
+                    <field name="bank_account_id"/>
+                    <field name="description"/>
                     <field name="amount"/>
                     <field name="currency_id"/>
                     <field name="state"/>
@@ -22,16 +23,24 @@
                     <sheet>
                         <group>
                             <group>
-                                <field name="name"/>
-                                <field name="bank_txn_id"/>
-                                <field name="date"/>
+                                <field name="bank_account_id"/>
+                                <field name="external_id"/>
+                                <field name="datetime"/>
                                 <field name="amount"/>
-                                <field name="currency_id"/>
+                                <field name="balance_after"/>
                             </group>
                             <group>
                                 <field name="description"/>
                                 <field name="state"/>
                             </group>
+                        </group>
+                        <group string="Counterparty Details" name="counterparty">
+                            <field name="counterparty_name"/>
+                            <field name="counterparty_iban"/>
+                            <field name="counterparty_edrpou"/>
+                        </group>
+                        <group string="Raw Data">
+                            <field name="raw_data" nolabel="1"/>
                         </group>
                     </sheet>
                 </form>

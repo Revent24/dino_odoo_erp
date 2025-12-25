@@ -11,10 +11,13 @@
     <menuitem id="menu_dino_bank_root" name="Bank" sequence="50" web_icon="dino_erp,core/menu_icons/bank.png"/>
     <menuitem id="menu_dino_bank_transactions" name="Transactions" parent="menu_dino_bank_root" action="action_dino_bank_transaction" sequence="1"/>
     <menuitem id="menu_dino_bank_currency_rates" name="Currency Rates" parent="menu_dino_bank_root" action="action_dino_currency_rate" sequence="2"/>
-    <menuitem id="menu_res_currency_rates" name="System Rates" parent="menu_dino_bank_root" action="action_res_currency_rate" sequence="3"/>
-    <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root" action="action_dino_bank_config" sequence="3"/>
+    <menuitem id="menu_dino_bank_config" name="Configurations" parent="menu_dino_bank_root"  sequence="100"/>
+      <menuitem id="menu_dino_bank_integration_settings" name="Bank Directory" parent="menu_dino_bank_config" action="action_dino_bank_config" sequence="1"/>
+      <menuitem id="menu_dino_currency_list" name="System Currencies" parent="menu_dino_bank_config" action="base.action_currency_form" sequence="2"/>
+      <menuitem id="menu_res_currency_rates" name="System Rates" parent="menu_dino_bank_config" action="action_res_currency_rate" sequence="4"/>
+      <menuitem id="menu_dino_company_list" name="Our Companies" parent="menu_dino_bank_config" action="base.action_res_company_form" sequence="5"/>
     
-
+    
     <!-- Меню Касса -->
     <menuitem id="menu_dino_cashbook_root" name="Cashbook" sequence="51" web_icon="dino_erp,core/menu_icons/cash.png"/>
     <menuitem id="menu_dino_cashbook_transactions" name="Transactions" parent="menu_dino_cashbook_root" action="action_dino_cashbook" sequence="1"/>

@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- List View -->
+        <record id="view_dino_bank_list" model="ir.ui.view">
+            <field name="name">dino.bank.list</field>
+            <field name="model">dino.bank</field>
+            <field name="arch" type="xml">
+                <list string="Banks">
+                    <field name="name"/>
+                    <field name="mfo"/>
+                    <field name="edrpou"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- Form View -->
+        <record id="view_dino_bank_form" model="ir.ui.view">
+            <field name="name">dino.bank.form</field>
+            <field name="model">dino.bank</field>
+            <field name="arch" type="xml">
+                <form string="Bank">
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="mfo"/>
+                                <field name="name"/>
+                                <field name="edrpou"/>
+                            </group>
+                            <group>
+                                <field name="start_sync_date"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- Action -->
+        <record id="action_dino_bank" model="ir.actions.act_window">
+            <field name="name">Banks</field>
+            <field name="res_model">dino.bank</field>
+            <field name="view_mode">list,form</field>
+        </record>
+
+    </data>
+</odoo>

@@ -7,6 +7,7 @@
     'category': 'Tools',
     'depends': ['base', 'mail', 'web', 'uom'] ,  # added uom for document lines and quick-create
     'data': [
+        'finance/views/dino_bank_views.xml',
         'finance/views/bank_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
         'finance/views/dino_currency_rate_views.xml',
@@ -34,6 +35,7 @@
         'stock/views/dino_component_category_views.xml',
         'stock/data/dino_uom_data.xml',
         'stock/security/ir.model.access.csv',
+        'finance/security/ir.model.access.csv',
 
         'partners/views/dino_partners_actions.xml',
         'partners/views/dino_partners_views.xml',
@@ -44,6 +46,7 @@
 
 
         'finance/data/ir_cron_data.xml',
+        'finance/views/dino_currency_rate_views.xml',
         'core/views/menu.xml',
         
     ],
