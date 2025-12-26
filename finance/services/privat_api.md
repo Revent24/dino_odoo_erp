@@ -1,380 +1,321 @@
-# API "Автоклиент" ПриватБанка (v3.0.0)
+Взаємодія з API
 
-Краткое справочное руководство по API для взаимодействия с серверной частью приложения «Автоклиент».
+> Примечание: функциональность импорта транзакций отключена в текущей версии; поддерживается только импорт балансов.
 
----
 
-### Важлива інформація!
+Усі запити повинні містити обов’язкові поля в header:
 
-> -   **Безпека токена:** Не передавайте токен третім особам.
-> -   **Протоколи:** tls 1.0 та 1.1 не підтримуються. Рекомендується використовувати tls 1.3.
-> -   **Доступність:** Сервіс доступний для юридичних осіб в тарифах “Бізнес Комфорт” та “Бізнес Про”. Для ФОП сервіс доступний в будь-якому тарифі.
+User-Agent – клієнтський додаток;
+token – отриманий із налаштувань token;
+Content-Type – application/json;charset=cp1251.
+Підтримувані кодування utf8 і cp1251. Якщо charset не зазначено, кодування за замовчуванням cp1251.
 
----
 
-## 1. Авторизація
+Отримання балансів і транзакцій за рахунками
 
-Для отримання авторизаційних даних (`token`) необхідно підключити додаток «Інтеграція (Автоклієнт)» в інтерфейсі "Приват24 для бізнесу".
+Запити надсилаються за допомогою методу GET.
 
-1.  У "Приват24 для бізнесу" перейти в налаштування та підключити додаток API.
-2.  Вказати назву та, за потреби, IP-адреси.
-3.  Після створення перейти в налаштування додатка та скопіювати `token`.
-4.  Існує можливість отримати дані в старому форматі (окремо `ID` та `token`).
 
-### Взаємодія з API
+Отримання серверних дат
 
-Усі запити повинні містити обов’язкові поля в **header**:
+https://acp.privatbank.ua/api/statements/settings
 
--   `User-Agent`: Назва клієнтського додатка.
--   `token`: Ваш авторизаційний токен.
--   `Content-Type`: `application/json;charset=cp1251`.
--   **Кодування:** Підтримуються `utf8` та `cp1251` (за замовчуванням `cp1251`, якщо `charset` не вказано).
+Приклад відповіді
 
----
-
-## 2. Баланси та транзакції за рахунками
-
-Запити надсилаються методом `GET`. Базовий URL: `https://acp.privatbank.ua/api/statements`
-
----
-
-## Reference: Legacy PHP snippets (useful implementation hints)
-
-Below are PHP excerpts from a legacy project that show practical details and edge-cases for working with the PrivatBank Autoclient API.
-
-### 1) API health/status check
-
-Summary: call `/settings` and ensure `status == 'SUCCESS'`, `settings.phase == 'WRK'` and `settings.work_balance == 'N'` before making heavy requests.
-
-```php
-/* 
-    ПЕРЕВІРКА СТАТУСУ API
-    якщо work_balance != "N", запити робити не можна
-    якщо phase != "WRK", то в цей період запити до API можуть повертатися з помилками
-*/
-function CHEK_PRIVAT_API()
 {
-    $ApiQuery = 'https://acp.privatbank.ua/api/statements/settings';
-    $answer = GET_PRIVAT_API($ApiQuery);
 
-    //Обробка відповіді
-    if ($answer['status'] == 'SUCCESS') {
-        if ($answer['settings']['phase'] == 'WRK') {
-            if ($answer['settings']['work_balance'] == 'N') {
-                return true;
-            }
-        }
-    }
+  "status": "SUCCESS",
+
+  "type": "settings",
+
+  "settings": {
+
+    "phase": "WRK",
+
+    "dates_without_oper_day": // дні без опер. днів
+
+      "01.01.2018 00:00:00",
+
+      "30.12.2018 00:00:00",
+
+      "31.12.2018 00:00:00",
+
+      "01.01.2019 00:00:00",
+
+      "29.12.2019 00:00:00",
+
+      "30.12.2019 00:00:00",
+
+      "31.12.2019 00:00:00",
+
+      "01.01.2020 00:00:00"
+
+    ],
+
+    "today": "30.03.2020 00:00:00", // дата поточного опер. дня (проміжна виписка)
+
+    "lastday": "29.03.2020 00:00:00", // дата минулого опер. дня (проміжна виписка)
+
+    "work_balance": "N", // чи проходять регламент завдання, N – можна робити запити, Y – запити не робити
+
+    "server_date_time": "30.03.2020 12:03:51",
+
+    "date_final_statement": "28.03.2020 00:00:00" // дата, включно з якої є підсумкова виписка
+
+  }
+
 }
-```
 
-Notes: The check prevents queries during maintenance or restricted periods.
+Якщо значення phase відмінне від WRK, то в цей період запити до API можуть повертатися з помилками.
 
-### 2) HTTP headers and request pattern
 
-Legacy code shows example cURL headers used in the project:
 
-```php
-// Параметры подключения к API Привата
-$cid = VAR_CUR_PRIVAT_USER_ID; // id владельца с Автоклиента
-$token = VAR_CUR_PRIVAT_USER_TOKEN1 . VAR_CUR_PRIVAT_USER_TOKEN2; // token владельца с Автоклиента
+За інтервал дат
 
-//Запит на API Привата (example)
-CURLOPT_HTTPHEADER => array(
-    'User-Agent: PostmanRuntime/7.26.8',
-    'Accept-Encoding: gzip, deflate, br',
-    'Content-Type: application / json; charset = cp1251',
-    'id: ' . $cid,
-    'token: ' . $token
-),
-```
+https://acp.privatbank.ua/api/statements/balance - для отримання балансів
 
-Notes: the API expects `token` and often `id` (client id) headers as used by Autoclient.
+https://acp.privatbank.ua/api/statements/transactions - для отримання транзакцій
 
-### 3) Transactions import (paginated)
+?acc=номер рахунку
 
-Core flow (simplified):
+&startDate=ДД-ММ-ГГГГ - дата початку (обов’язковий параметр)
 
-- Determine `startDate` (either stored constant, or last transaction date saved)
-- Loop: call `/statements/transactions?startDate=DD-MM-YYYY&followId={next}`
-- For each page: iterate `transactions[]`, check or create a counterparty record, prepare transaction payload, then insert or update local record keyed by `TECHNICAL_TRANSACTION_ID` (unique identifier)
-- If `exist_next_page` true, repeat using `next_page_id` as `followId`.
+&endDate=ДД-ММ-ГГГГ - дата закінчення (необов’язковий параметр)
 
-Excerpt (essential logic):
+&followId=id наступної пачки з відповіді (необов’язковий параметр)
 
-```php
-// Приват: Отримання нових Транзакцій по рахункам
-function GET_TRANSACTIONS()
+&limit=кількість записів у пачці (за замовчуванням 20), максимальне значення - 500, рекомендується використовувати не більше 100
+
+
+Отримати проміжні дані – з lastday по today
+
+https://acp.privatbank.ua/api/statements/balance(або transactions)/interim
+
+?acc=номерРахунку
+
+&followId=id наступної пачки з відповіді (необов'язковий параметр)
+
+&limit=кількість записів у пачці (за замовчуванням 20), максимальне значення - 500, рекомендується використовувати не більше 100
+
+
+Отримати дані за останній підсумковий день:
+
+https://acp.privatbank.ua/api/statements/balance(или transactions)/final
+
+?acc=номер рахунку
+
+&followId=id наступної пачки з відповіді (необов’язковий параметр)
+
+&limit=кількість записів у пачці (за замовчуванням 20), максимальне значення - 500, рекомендується використовувати не більше 100
+
+
+Якщо номер рахунку не зазначено (немає параметра acc= і значення), дані будуть сформовані за всіма активними рахунками.
+
+Якщо у відповіді параметр exist_next_page: true, значення з next_page_id потрібно підставити в наступний запит у параметр followId для отримання наступної пачки.
+
+Приклад відповіді з балансами
+
 {
-    // determine $d_start
-    do {
-        $ApiUrl = 'https://acp.privatbank.ua/api/statements/transactions?startDate=' . $d_start . '&followId=' . $NextPage;
-        $answer = GET_PRIVAT_API($ApiUrl);
-        if ($answer['status'] != 'SUCCESS') return $answer['status'];
 
-        foreach ($answer['transactions'] as $result) {
-            // check/create counterparty
-            // map fields
-            // deduplicate by TECHNICAL_TRANSACTION_ID
-            // insert or update
-        }
-        $NextPage = $answer['next_page_id'];
-    } while ($answer['exist_next_page'] > 0);
-}
-```
+  "status": "SUCCESS", // ознака успішності відповіді
 
-### 4) Balances and turnovers per account (per-account queries)
+  "type": "balances", // тип відповіді
 
-Example shows per-account balance queries using `Acc` parameter: `/statements/balance?Acc={acc}&startDate=...&followId=...`
+  "exist_next_page": true, // ознака наявності наступної пачки
 
-### 5) Currency history
+  "next_page_id": "26101050000888", // ідентифікатор наступної пачки  (підставляється у followId наступного запиту)
 
-Use `GET /api/proxy/currency/history?startDate=DD-MM-YYYY&endDate=DD-MM-YYYY` and process `data.history`.
+  "balances": [ // масив об’єктів із балансами
 
----
+    {
 
-Use these snippets as an implementation reference: they show practical header usage, pagination, and data fields mapping. Integrations in Python should follow the same logic (check API status, use `followId` pagination, deduplicate by `TECHNICAL_TRANSACTION_ID`, update or create counterparties, and update `last_import_date` for incrementality).
+      "acc": "UA943052990000026100050001037", // номер рахунку
 
-### 2.1. Отримання серверних дат
+      "currency": "UAH", // валюта
 
--   **Endpoint:** `/settings`
--   **Призначення:** Отримати службові дати (поточний/минулий операційний день, дата підсумкової виписки) та статус роботи сервера.
--   **Важливо:** Якщо `phase` не дорівнює `WRK`, запити до API можуть повертати помилки.
+      "balanceIn": "0.00", // залишок на рахунку вхідний
 
-### 2.2. Отримання балансів та транзакцій
+      "balanceInEq": "0.00", // залишок на рахунку вхідний (екв. у нац. валюті)
 
--   **Баланси:** `/balance`
--   **Транзакції:** `/transactions`
+      "balanceOut": "0.00", // залишок на рахунку вихідний
 
-#### Параметри запиту:
+      "balanceOutEq": "0.00", // залишок на рахунку вихідний (екв. у нац. валюті)
 
--   `acc`: Номер рахунку. Якщо не вказано, дані формуються по всім активним рахункам.
--   `startDate`: Дата початку (`ДД-ММ-ГГГГ`), обов'язковий.
--   `endDate`: Дата закінчення (`ДД-ММ-ГГГГ`), необов'язковий.
--   `followId`: ID наступної "пачки" даних з попередньої відповіді (для пагінації).
--   `limit`: Кількість записів (за замовчуванням 20, максимум 500).
+      "turnoverDebt": "0.00", // оборот, дебет
 
-#### Інші ендпоінти:
+      "turnoverDebtEq": "0.00", // оборот, дебет (екв. у нац. валюті)
 
--   **Проміжні дані (з `lastday` по `today`):** `/balance/interim` або `/transactions/interim`
--   **Дані за останній підсумковий день:** `/balance/final` або `/transactions/final`
+      "turnoverCred": "0.00", // оборот, кредит
 
-**Пагінація:** Якщо у відповіді `exist_next_page: true`, значення з `next_page_id` потрібно передати в наступний запит у параметр `followId`.
+      "turnoverCredEq": "0.00", // оборот, кредит (екв. у нац. валюті)
 
----
+      "bgfIBrnm": " ", // бранч, що залучив контрагента
 
-## 3. Курси валют
+      "brnm": "DNH0", // бранч рахунку
 
--   **Поточні курси:** `GET https://acp.privatbank.ua/api/proxy/currency/`
--   **Історія курсів:** `GET https://acp.privatbank.ua/api/proxy/currency/history?startDate=ДД-ММ-ГГГГ&endDate=ДД-ММ-ГГГГ` (період не більше 15 днів).
+      "dpd": "09.03.2020 00:00:00", // дата останнього руху за рахунком
 
-#### Поля відповіді:
--   `B`: Купівля.
--   `S`: Продаж.
--   `rate`: Курс.
--   `nbuRate`: Курс НБУ.
+      "nameACC": "Програмiсти та Ko МСБ-ТЕСТ ТОВ", // найменування рахунку
 
----
+      "state": "l",
 
-## 4. Створення платежу
+      "atp": "D",
 
--   **Endpoint (з прогнозом):** `POST https://acp.privatbank.ua/api/proxy/payment/create_pred`
--   **Endpoint (без прогнозу):** `POST https://acp.privatbank.ua/api/proxy/payment/create`
+      "flmn": "DN",
 
-Тіло запиту (`BODY`) - JSON-об'єкт з реквізитами платежу.
+      "date_open_acc_reg": "28.12.2016 00:00:00",
 
-#### Обов’язкові реквізити:
--   `document_number`: Номер документа.
--   `payer_account`: Рахунок відправника.
--   `recipient_account`: Рахунок одержувача (або `recipient_card` для платежу на картку).
--   `recipient_nceo`: ЄДРПОУ одержувача.
--   `payment_naming`: Назва одержувача.
--   `payment_amount`: Сума платежу.
--   `payment_destination`: Призначення платежу (5-420 символів, для податкових - до 140).
+      "date_open_acc_sys": "28.12.2016 00:00:00",
 
-Успішна відповідь повертає `HTTP 201` та JSON з `payment_ref` та `payment_pack_ref`.
+      "date_close_acc": "01.01.1900 00:00:00",
 
-### 4.1. Завантаження підписаного платежу
+      "is_final_bal": true
 
-Процес складається з двох кроків:
-1.  **Отримання інформації по платежу:**
-    -   `GET /api/proxy/payment/get?ref={референсПлатежу}`
-    -   У відповіді будуть дані платежу та блок `fields_for_sign`, що містить перелік полів для підпису.
-2.  **Відправка підпису на збереження:**
-    -   `POST /api/proxy/payment/add-sign?ref={референсПлатежу}`
-    -   **Body:** `{"sign": "BASE64-представлення підписаних даних"}`
-    -   Сигнатуру необхідно накласти на JSON-відповідь з першого кроку.
-    -   **Важливо:** Для кожного рівня підпису (директор, бухгалтер) потрібно використовувати токени відповідних відповідальних осіб.
+    },{...}
 
-### 4.2. Створення валютних платежів
+]}
 
--   **SWIFT:** `POST https://acp.privatbank.ua/api/proxy/zed/swift/save_with_forecast`
--   **Внутрішні валютні:** `POST https://acp.privatbank.ua/api/proxy/zed/cpi/save_with_forecast`
 
-Тіло запиту містить деталізовану інформацію про платника, отримувача, банки-кореспонденти та сам платіж.
+Приклад відповіді з транзакціями
 
----
-
-## 5. Електронний документообіг (Інвойсинг)
-
-Базовий URL: `https://acp.privatbank.ua`
-
-### 5.1. Журнал документів
-
--   **Endpoints:**
-    -   `/api/proxy/edoc/journal/inbox` (Вхідні)
-    -   `/api/proxy/edoc/journal/outbox` (Вихідні)
-    -   `/api/proxy/edoc/journal/in-process` (В роботі)
-    -   `/api/proxy/edoc/journal/all` (Всі)
-    -   `/api/proxy/edoc/journal/to-pay` (До сплати)
--   **Метод:** `POST`
--   **Параметри:** `dateBegin`, `dateEnd` (обов'язкові), а також багато необов'язкових для фільтрації та сортування (`okpo`, `limit`, `docType`, `status`, `sortBy` та ін.).
-
-### 5.2. Завантаження та робота з документами
-
-API дозволяє завантажувати документи в різних форматах (XML, PDF, Base64), з підписом (ЕЦП) та без, а також керувати ними.
-
--   **Завантаження XML (без ЕЦП):** `POST /api/proxy/edoc/loader/upload`
--   **Завантаження підписаного XML:** `POST https://docs.24.privatbank.ua/loader/v2/upload-signed-xml`
--   **Завантаження PDF (без ЕЦП):** `POST /api/proxy/edoc/loader/upload-pdf`
--   **Отримання документа (XML/PDF/Base64/p7s):** `GET /api/proxy/edoc/journal/get-xml-document/{ID}?okpo={okpo}`
--   **Видалення документа:** `GET /api/proxy/edoc/journal/delete/{ID}?okpo={okpo}`
--   **Створення платежу на основі рахунка:** `POST /api/proxy/edoc/create-payment-from-invoice/{ID}?okpo={okpo}&payerAccount={payerAccount}`
-
----
-
-## 6. Зарплатний проєкт
-
-API для управління зарплатними проектами, групами, співробітниками та відомостями.
-
--   **Отримати список груп (проєктів):** `GET /api/pay/mp/list-groups`
--   **Отримати список одержувачів у групі:** `GET /api/pay/mp/list-receivers?group={код_групи}`
--   **Додати/оновити співробітника:** `POST /api/pay/mp/update-receiver`
--   **Отримати список відомостей:** `GET /api/pay/apay24/packets/list`
--   **Створити нову відомість:** `POST /api/pay/maspay/create`
--   **Додати співробітника у відомість:** `POST /api/pay/maspay/{референс_пакета}/add`
--   **Надіслати відомість на перевірку:** `POST /api/pay/maspay/{референс_пакета}/validate`
-
----
-
-## 7. Корпоративні картки
-
--   **Зведена інформація по всім карткам:** `POST /api/corpcards/v2/cards/list`
--   **Виписка за групою карток:** `POST /api/corpcards/v2/corp/statements?dateStart={date}&dateEnd={date}`
--   **Виписка за карткою:** `POST /api/corpcards/v2/card/statements?dateStart={date}&dateEnd={date}`
-
----
-
-## 8. Сервіс перевірки контрагентів (УБКІ)
-
--   **Endpoint:** `POST https://acp.privatbank.ua/api/ubki/check`
--   **Призначення:** Надає детальну інформацію про контрагента (юр. особу або ФОП) з державних реєстрів, а також попередження про ризики (банкрутство, борги, санкції тощо).
--   **Запит:** `{"edrpou": "ЄДРПОУ/ІПН контрагента"}`
-
----
-
-## 9. Отримання квитанцій та виписок
-
--   **Квитанції по платежам (PDF):**
-    -   **Endpoint:** `POST https://acp.privatbank.ua/api/paysheets/print_receipt`
-    -   **Body:** `{"transactions": [{"account": "...", "reference": "...", "refn": "..."}], "perPage": 4}`
--   **Еквайрингова виписка (по терміналам):**
-    -   **Endpoint:** `POST https://acp.privatbank.ua/api/equiring/statements`
-    -   **Body:** `{"account": "...", "dateFrom": "YYYY-MM-DD", "dateTo": "YYYY-MM-DD"}`
-    -   **Примітка:** Різниця між `dateFrom` та `dateTo` не може бути більше 1 дня.
-
----
-
-## 10. Пример реализации (PHP)
-
-*Ниже приведены примеры из реального рабочего проекта на PHP для демонстрации логики взаимодействия с API.*
-
-### Проверка статуса API
-
-```php
-/* 
-    ПЕРЕВІРКА СТАТУСУ API
-    якщо work_balance != "N", запити робити не можна
-    якщо phase != "WRK", то в цей період запити до API можуть повертатися з помилками
-*/
-function CHEK_PRIVAT_API()
 {
-    $ApiQuery = 'https://acp.privatbank.ua/api/statements/settings';
-    $answer = GET_PRIVAT_API($ApiQuery);
 
-    //Обробка відповіді
-    if ($answer['status'] == 'SUCCESS') {
-        if ($answer['settings']['phase'] == 'WRK') {
-            if ($answer['settings']['work_balance'] == 'N') {
-                return true;
-            }
-        }
-    }
-}
-```
+  "status": "SUCCESS", // ознака успішності відповіді
 
-### Основная функция GET-запроса
+  "type": "transactions", // тип відповіді
 
-```php
-function GET_PRIVAT_API($ApiUrl)
-{
-    //Параметры подключения к API Привата
-    $cid = '...'; // id владельца с Автоклиента
-    $token = '...'; // token владельца с Автоклиента
+  "exist_next_page": true, // ознака наявності наступної пачки
 
-    //Запит на API Привата
-    $curl = curl_init();
-    curl_setopt_array($curl, array(
-        CURLOPT_URL => $ApiUrl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => 'gzip',
-        CURLOPT_TIMEOUT => 0,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_HTTPHEADER => array(
-            'User-Agent: PostmanRuntime/7.26.8',
-            'Content-Type: application/json; charset=cp1251',
-            'id: ' . $cid,
-            'token: ' . $token
-        ),
-    ));
+  "next_page_id": "620699370_online", // ідентифікатор наступної пачки (підставляється у followId наступного запиту)
 
-    //Отримання і обробка відповіді
-    $response = iconv("windows-1251", "UTF-8", curl_exec($curl));
-    curl_close($curl);
-    
-    return json_decode($response, true);
-}
-```
+  "transactions": [ // масив об’єктів із транзакціями
 
-### Получение транзакций с пагинацией
+    {
 
-```php
-function GET_TRANSACTIONS()
-{
-    // ... визначення startDate ...
-  
-    $NextPage = '';
-    do {
-        $ApiUrl =
-            'https://acp.privatbank.ua/api/statements/transactions?' .
-            'startDate=' . $d_start . '&followId=' . $NextPage;
-        $answer = GET_PRIVAT_API($ApiUrl);
-      
-        if ($answer['status'] != 'SUCCESS') {
-            break;
-        }
+      "AUT_MY_CRF": "31451288", // ЄДРПОУ одержувача
 
-        foreach ($answer['transactions'] as $result) {
-            // ... логіка перевірки на дублікат по TECHNICAL_TRANSACTION_ID ...
-            
-            // ... маппинг полів з $result в поля бази даних ...
+      "AUT_MY_MFO": "305299", // МФО одержувача
 
-            // ... створення або оновлення запису ...
-        }
-        
-        // Наступна пачка
-        $NextPage = $answer['next_page_id'];
-    } while ($answer['exist_next_page'] > 0);
-}
-```
+      "AUT_MY_ACC": "26184050001514", // рахунок одержувача
+
+      "AUT_MY_NAM": "Програмiсти та Ko МСБ-ТЕСТ ТОВ", // назва одержувача
+
+      "AUT_MY_MFO_NAME": "АТ КБ \"ПРИВАТБАНК\"", // банк одержувача
+
+      "AUT_MY_MFO_CITY": "Київ", // назва міста банку
+
+      "AUT_CNTR_CRF": "14360570", // ЄДРПОУ контрагента
+
+      "AUT_CNTR_MFO": "305299", // МФО контрагента
+
+      "AUT_CNTR_ACC": "70214924104032", // рахунок контрагента
+
+      "AUT_CNTR_NAM": "ПРОЦ ВИТР ЗА СТРОК КОШТ СУБ(UAH)", // назва контрагента
+
+      "AUT_CNTR_MFO_NAME": "АТ КБ \"ПРИВАТБАНК\"", // назва банку контрагента
+
+      "AUT_CNTR_MFO_CITY": "Київ", // назва міста банку
+
+      "CCY": "UAH", // валюта
+
+      "FL_REAL": "r", // ознака реальності проведення (r,i)
+
+      "PR_PR": "r", // стан p - проводиться, t - сторнована, r - проведена, n - забракована
+
+      "DOC_TYP": "m", // тип пл. документа
+
+      "NUM_DOC": "K0108B1WKX", // номер документа
+
+      "DAT_KL": "07.01.2020", // клієнтська дата
+
+      "DAT_OD": "07.01.2020", // дата валютування
+
+      "OSND": "Нарахування вiдсоткiв згiдно депозитного договору N...", // підстава  платежу
+
+      "SUM": "0.01", // сума
+
+      "SUM_E": "0.01", // сума в національній валюті (грн)
+
+      "REF": "DNCHK0108B1WKX", // референс проведення
+
+      "REFN": "1", // № з/п всередині проведення
+
+      "TIM_P": "02:58", // час проведення
+
+      "DATE_TIME_DAT_OD_TIM_P": "07.01.2020 02:58:00",
+
+      "ID": "557091731", // ID транзакції
+
+      "TRANTYPE": "C", // тип транзакції дебет/кредит (D, C)
+
+      "DLR": "J63DNDSM0XHY5", // референс платежу сервісу, через який створювали платіж (payment_pack_ref - у разі створення платежу через АPI «Автоклієнт»)
+
+      "TECHNICAL_TRANSACTION_ID": "557091731_online"
+
+            }, {...}
+
+]}
+
+Для виконання вимог НБУ, у відповіді можуть бути також додаткові поля, які відносяться до кінцевого платника/отримувача:
+
+
+"UETR":"b23aeadc-1ab7-4c34-a005-0f005a059948", // ідентифікатор тразакції
+
+"ULTMT":"N", // тип заповненості реквізитів
+
+"PAYER_ULTMT_NCEO":"", // ЄДРПОУ кінцевого платника
+
+"PAYER_ULTMT_DOCUMENT":"", // серія, номер паспорту кінцевого платника
+
+"PAYER_ULTMT_NAME":"", // назва кінцевого платника
+
+"PAYER_ULTMT_COUNTRY_CODE":"", // код країни нерезидента кінцевого платника
+
+"RECIPIENT_ULTMT_NCEO":"", // ЄДРПОУ кінцевого отримувача
+
+"RECIPIENT_ULTMT_DOCUMENT":"", // серія, номер паспорту кінцевого отримувача
+
+"RECIPIENT_ULTMT_NAME":"", // назва кінцевого отримувача
+
+"RECIPIENT_ULTMT_COUNTRY_CODE":"" // код країни нерезидента кінцевого отримувача
+
+Для податкових платежів також додані нові поля для структурованого призначення платежу:
+
+"STRUCT_CODE":”101”, // код виду сплати
+"STRUCT_TYPE":”22080000”, // код бюджетної класифікації
+
+"STRUCT_CATEGORY":”Довільний текст” // Інформація про податкове повідомлення (рішення)
+
+Для ідентифікації унікальності платіжних інструкцій використовуйте конкатенацію полів REF+REFN
+
+---
+
+## Відповідність реалізації (короткий огляд)
+Нижче — зведення відповідності між документацією та тим, що вже реалізовано в коді, а також список необхідних доробок.
+
+### Реалізовано в коді ✅
+- `PrivatClient.get_api_settings()` — відповідає `/statements/settings`.
+- `PrivatClient.fetch_balances_for_all_accounts()` — балансні дані: використовується `acc` як `external_id` у `import_accounts()`.
+- `PrivatClient.fetch_transactions_page()` та `fetch_transactions_iter()` — пагінація через `exist_next_page` / `next_page_id` підтримується.
+- CP1251 fallback при парсингу відповіді та `request_delay` throttle — є у клієнті.
+- `import_accounts()` — створення/оновлення рахунків з `acc` fallback; повертає рекордсет оброблених рахунків.
+
+### Невирішені / потребують доробки ⚠️
+- `privat_service.import_transactions()` має ітератор сторінок, але всередині обробка транзакції не реалізована (в коді стоїть заглушка `pass`). Потрібно:
+  - робити дедуплікацію по `TECHNICAL_TRANSACTION_ID` (фолбек `REF+REFN` / `ID`),
+  - створювати/оновлювати записи через `dino.bank.transaction.create_from_api(account.external_id, payload)` або еквівалент,
+  - інкрементувати лічильники `created/updated/skipped`,
+  - оновлювати `account.last_import_date` по max(datetime) оброблених транзакцій.
+- Якщо `account is None`, функція повинна пройти по всіх рахунках банку (це очікують існуючі тести).
+- Розширити тести: покриття пагінації, створення транзакцій, дедуплікації та оновлення `last_import_date`.
+
+---
+
+## Рекомендації по пріоритетам
+1. **Високий**: реалізувати обробку транзакції + дедуплікацію + оновлення `last_import_date` + тести.
+2. **Середній**: додати параметр `max_pages`/`max_records_per_run` для захисту UI від довгих синків.
+3. **Низький**: покращення логів (номер сторінки, followId, кількість транзакцій) і UX (повідомлення по завершенні).
+
+---
+
+_При необхідності можу одразу реалізувати пункти 1–2 і додати тести; скажіть, чи робимо це зараз._ 

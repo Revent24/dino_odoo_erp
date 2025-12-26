@@ -1,101 +1,110 @@
 # -*- coding: utf-8 -*-
-"""Privatbank client for Autoklient API.
-Implements low-level HTTP requests and authentication.
-"""
 import logging
 import requests
+import json
+import time
 from datetime import date
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 _logger = logging.getLogger(__name__)
 
 BASE_URL = 'https://acp.privatbank.ua/api'
 
-
 class PrivatClient:
-    def __init__(self, api_key=None, timeout=30):
+    def __init__(self, api_key, client_id=None, timeout=30, request_delay=0.3):
         if not api_key:
-            raise ValueError("API key (token) is required for PrivatClient")
-        self.api_key = api_key
+            raise ValueError("API key (token) is required")
+        
         self.timeout = timeout
+        self.request_delay = request_delay
+        self.session = requests.Session()
+        
+        # Настраиваем заголовки один раз для всех запросов
+        self.session.headers.update({
+            'User-Agent': 'DinoERP Integration',
+            'token': api_key,
+            'Content-Type': 'application/json;charset=cp1251' # На всякий случай, хотя для GET не критично
+        })
+        
+        # Если это группа предприятий, добавляем ID
+        if client_id:
+            self.session.headers['id'] = str(client_id)
+
+        # Retry strategy
+        retries = Retry(total=3, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+        self.session.mount('https://', HTTPAdapter(max_retries=retries))
 
     def _get(self, endpoint, params=None):
-        """Generic method to perform a GET request."""
+        """Выполняет GET запрос с автоматической обработкой кодировки CP1251."""
         url = f"{BASE_URL}{endpoint}"
-        headers = {
-            'User-Agent': 'DinoERP Integration',
-            'token': self.api_key,
-            # Content-Type is not needed for GET requests
-        }
         try:
-            response = requests.get(url, headers=headers, params=params, timeout=self.timeout)
-            response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
-            return response.json()
-        except requests.exceptions.RequestException as e:
-            _logger.error("PrivatBank API request failed: %s", e)
-            raise  # Re-raise the exception to be handled by the service layer
-
-    def fetch_balances_for_all_accounts(self):
-        """
-        Fetches balances for all active accounts.
-        The /statements/balance endpoint without 'acc' parameter returns all accounts.
-        We need a date range, so we'll just ask for today to get the list.
-        """
-        today_str = date.today().strftime('%d-%m-%Y')
-        params = {
-            'startDate': today_str,
-            'endDate': today_str,
-        }
-        response = self._get('/statements/balance', params=params)
-        
-        if response.get('status') == 'SUCCESS':
-            return response.get('balances', [])
-        else:
-            _logger.error("Failed to fetch balances from PrivatBank: %s", response)
-            return []
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            
+            # Приват часто отдает cp1251, requests иногда не угадывает
+            try:
+                return response.json()
+            except ValueError:
+                text = response.content.decode('cp1251', errors='replace')
+                return json.loads(text)
+                
+        except requests.RequestException as e:
+            _logger.error(f"PrivatBank API Error [{endpoint}]: {e}")
+            raise
 
     def check_api_status(self):
-        """Check API health/status via /statements/settings.
-        Returns True if API is in working state (phase == 'WRK' and work_balance == 'N'), False otherwise.
-        Raises requests exceptions on HTTP errors.
-        """
-        try:
-            resp = self._get('/statements/settings')
-        except Exception:
-            _logger.exception('Failed to fetch PrivatBank settings endpoint')
-            raise
-        if resp.get('status') != 'SUCCESS':
-            _logger.warning('PrivatBank settings response not SUCCESS: %s', resp)
-            return False
-        settings = resp.get('settings') or {}
-        if settings.get('phase') == 'WRK' and settings.get('work_balance') == 'N':
-            return True
-        _logger.info('Privat API not in working mode: %s', settings)
-        return False
+        """Проверка статуса API."""
+        data = self._get('/statements/settings')
+        settings = data.get('settings', {})
+        # Логика: если phase=WRK и work_balance=N — все ок.
+        return settings.get('phase') == 'WRK' and settings.get('work_balance') == 'N'
 
-    def fetch_transactions_page(self, startDate, followId=None, acc=None):
-        """Fetch a single page of transactions.
-        :param startDate: 'DD-MM-YYYY' string
-        :param followId: optional next_page_id from previous response
-        :param acc: optional account number to filter
-        :return: parsed JSON response
-        """
-        params = {'startDate': startDate}
-        if followId:
-            params['followId'] = followId
-        if acc:
-            params['acc'] = acc
-        response = self._get('/statements/transactions', params=params)
-        return response
+    def fetch_balances(self, date_str=None):
+        """Получает балансы по всем счетам."""
+        d = date_str or date.today().strftime('%d-%m-%Y')
+        params = {'startDate': d, 'endDate': d}
+        
+        data = self._get('/statements/balance', params=params)
+        return data.get('balances', []) if data.get('status') == 'SUCCESS' else []
 
-    def fetch_transactions_iter(self, startDate, acc=None):
-        """Generator that yields transactions pages for given startDate and account.
-        Handles followId pagination as in legacy PHP code.
-        Yields each response dict.
+    def get_transactions_generator(self, account_num=None, start_date=None, end_date=None, limit=100):
         """
-        next_page = None
+        Генератор, который листает страницы транзакций.
+        Автоматически обрабатывает followId.
+        """
+        params = {
+            'startDate': start_date,
+            'limit': limit
+        }
+        # Добавляем acc только если он передан
+        if account_num:
+            params['acc'] = account_num
+            
+        if end_date:
+            params['endDate'] = end_date
+
+        follow_id = None
+        
         while True:
-            resp = self.fetch_transactions_page(startDate=startDate, followId=next_page, acc=acc)
-            yield resp
-            if not resp or not resp.get('exist_next_page'):
+            if follow_id:
+                params['followId'] = follow_id
+            
+            data = self._get('/statements/transactions', params=params)
+            
+            # Если статус не SUCCESS, прерываем
+            if data.get('status') != 'SUCCESS':
+                _logger.warning(f"Error fetching transactions page for {account_num}: {data}")
                 break
-            next_page = resp.get('next_page_id')
+
+            transactions = data.get('transactions', [])
+            if transactions:
+                yield transactions
+            
+            # Проверка на наличие следующей страницы
+            if data.get('exist_next_page') and data.get('next_page_id'):
+                follow_id = data['next_page_id']
+                if self.request_delay:
+                    time.sleep(self.request_delay)
+            else:
+                break

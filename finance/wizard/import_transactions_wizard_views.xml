@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_import_transactions_wizard_form" model="ir.ui.view">
+        <field name="name">dino.import.transactions.wizard.form</field>
+        <field name="model">dino.import.transactions.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Import Transactions for Period">
+                <group>
+                    <field name="bank_id"/>
+                    <field name="date_from"/>
+                    <field name="date_to"/>
+                </group>
+                <footer>
+                    <button name="action_run_import" string="Start Import" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

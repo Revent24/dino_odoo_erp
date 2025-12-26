@@ -1,10 +1,18 @@
 # -*- coding: utf-8 -*-
-"""
-This file contains constants for bank integrations, primarily MFO codes.
-Using constants helps avoid "magic strings" in the code and simplifies maintenance.
+"""finance/services/bank_constants.py
+
+Константы для банковских интеграций (Bank Integration Constants).
+
+Этот файл содержит набор констант, используемых в модулях интеграции с банками.
+Основное назначение: хранение кодов МФО (Межфилиальных Оборотов) украинских банков.
+
+Использование констант вместо "магических строк" напрямую в коде даёт следующие преимущества:
+- Улучшает читаемость кода: вместо числа '305299' мы используем `const.MFO_PRIVAT`.
+- Упрощает поддержку: если МФО изменится, достаточно изменить его только в этом файле.
+- Снижает вероятность ошибок: опечатки в строках менее заметны, чем ошибки в именах констант, которые IDE может подсветить.
 """
 
-# MFO (Межфилиальные обороты) codes for Ukrainian banks
-MFO_NBU = '300001'       # National Bank of Ukraine
-MFO_PRIVAT = '305299'    # PrivatBank
-MFO_MONO = '322001'      # Monobank (Universal Bank)
+# Коды МФОдля украинских банков
+MFO_NBU = '300001'       # Национальный Банк Украины
+MFO_PRIVAT = '305299'    # ПриватБанк
+MFO_MONO = '322001'      # Монобанк (Универсал Банк)

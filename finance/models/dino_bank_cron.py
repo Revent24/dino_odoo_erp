@@ -9,6 +9,33 @@ _logger = logging.getLogger(__name__)
 class DinoBankCron(models.Model):
     _inherit = 'dino.bank'
 
+    # ------------------------------------------------------------------
+    # РАЗДЕЛ: Оркестрация / Точки входа планировщика (cron)
+    # ------------------------------------------------------------------
+    # Оркестрационная точка входа: запуск fetch для банка; для НБУ делегирует импорт/синхронизацию
+    def fetch_rates(self):
+        """Stub: implement per-bank fetch logic (kept for compatibility).
+        For NBU (mfo=300001) this will import exchange rates if called explicitly."""
+        _logger.info('Fetching rates for bank %s (%s)', self.id, self.name)
+        self.last_sync_date = fields.Datetime.now()
+        # If this is NBU, delegate to import_nbu_rates incrementally for missing dates
+        for rec in self:
+            if rec.mfo == '300001':
+                rate_model = self.env['dino.currency.rate']
+                last = rate_model.search([('source', '=', 'nbu')], order='date desc', limit=1)
+                start_date_import = rec.start_sync_date
+                if last and last.date:
+                    start_date_import = max(start_date_import, last.date + timedelta(days=1))
+                # убедиться, что start_date задана и <= сегодняшней даты
+                if start_date_import:
+                    try:
+                        rec.import_and_sync_nbu(start_date=start_date_import, to_date=fields.Date.context_today(rec), overwrite=rec.cron_overwrite_existing_rates)
+                    except Exception as e:
+                        _logger.error('Error during scheduled NBU import+sync for bank %s: %s', rec.id, e)
+                else:
+                    _logger.warning('Skipping scheduled NBU import for bank %s: start date not configured.', rec.id)
+        return True
+
     def _advance_cron_nextcall(self):
         """Advance self.cron_nextcall by interval_number/interval_type. If cron_time_of_day_hours is set, preserve that time-of-day."""
         from dateutil.relativedelta import relativedelta

@@ -15,6 +15,7 @@
         'core/views/minimal_views.xml',
 
         # Documents module views (moved before projects to ensure views validate)
+        # Wizard for importing specifications must be loaded before the document form that references it
         'documents/wizard/import_specification_excel_views.xml',
         'documents/views/dino_operation_document_views.xml',
         'documents/views/dino_operation_document_specification_views.xml',
@@ -48,7 +49,6 @@
         'finance/data/ir_cron_data.xml',
         'finance/views/dino_currency_rate_views.xml',
         'core/views/menu.xml',
-        
     ],
     # assets removed: category sidebar feature was rolled back
     'application': True,

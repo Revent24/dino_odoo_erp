@@ -28,6 +28,11 @@
           <button name="button_sync" type="object" string="Synchronize" class="btn-primary"/>
         </header>
         <sheet>
+          <div class="oe_button_box" name="button_box">
+            <button name="action_view_accounts" type="object" class="oe_stat_button" icon="fa-university">
+              <field name="account_count" widget="statinfo" string="Accounts"/>
+            </button>
+          </div>
           <group name="general_info">
             <group>
               <field name="mfo"/>
@@ -43,7 +48,7 @@
                   <group>
                     <group string="API Settings">
                       <field name="api_client_id"/>
-                      <field name="api_key" password="True"/>
+                      <field name="api_key"/>
                       <field name="start_sync_date"/>
                       <field name="last_sync_date"/>
                     </group>
@@ -60,6 +65,25 @@
           </notebook>
         </sheet>
       </form>
+    </field>
+  </record>
+
+  <record id="view_dino_bank_account_tree" model="ir.ui.view">
+    <field name="name">dino.bank.account.tree</field>
+    <field name="model">dino.bank.account</field>
+    <field name="arch" type="xml">
+      <list string="Bank Accounts" create="false" edit="false" delete="false">
+        <field name="name" readonly="1"/>
+        <field name="account_number" readonly="1"/>
+        <field name="currency_id" readonly="1"/>
+        <field name="balance_end_date" string="Date" readonly="1"/>
+        <field name="balance_start" string="Start Balance" readonly="1"/>
+        <field name="turnover_credit" string="Credit Turnover" readonly="1"/>
+        <field name="turnover_debit" string="Debit Turnover" readonly="1"/>
+        <field name="balance" string="End Balance" readonly="1"/>
+        <field name="last_import_date" readonly="1"/>
+        <field name="active" readonly="1"/>
+      </list>
     </field>
   </record>
 

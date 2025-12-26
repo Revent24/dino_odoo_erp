@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-"""
-Service Dispatcher for Bank Integrations.
+"""finance/services/bank_dispatcher.py
 
-This module acts as a registry that maps a bank's MFO code to the specific
-service function responsible for handling its synchronization logic.
-This approach decouples the `dino.bank` model from the concrete implementation
-of each bank's integration.
+Сервис-диспетчер для интеграций с банками (Bank Integration Dispatcher).
+Сопоставляет МФО банка с функцией-обработчиком синхронизации.
 """
 import logging
 from odoo.exceptions import UserError
@@ -13,115 +10,88 @@ from odoo import _
 
 from . import bank_constants as const
 from . import nbu_service
-# Import other services as they are implemented
-# from . import privat_service
-# from . import mono_service
 
 _logger = logging.getLogger(__name__)
 
+# ----------------------------------------------------------------------
+# ФУНКЦИИ-ОБРАБОТЧИКИ СИНХРОНИЗАЦИИ
+# ----------------------------------------------------------------------
 
-def run_privat_sync(bank):
-    """
-    Full synchronization logic for PrivatBank.
-    Step 1: Import/update accounts.
-    Step 2: Import transactions for each account.
-    """
-    _logger.info("Dispatching to PrivatBank full sync for bank: %s", bank.name)
-    
-    # --- Step 1: Import and update bank accounts ---
+def _sync_nbu(bank):
+    """Обертка для синхронизации НБУ."""
+    return nbu_service.run_sync(bank)
+
+def _sync_privat(bank):
+    """Логика синхронизации ПриватБанка."""
+    _logger.info("Запуск синхронизации ПриватБанка: %s", bank.name)
     from . import privat_service
+
     try:
-        acc_stats = privat_service.import_accounts(bank)
-        _logger.info("PrivatBank account sync stats: %s", acc_stats)
+        import_result = privat_service.import_accounts(bank)
     except Exception as e:
-        _logger.error("Error during PrivatBank account import: %s", e, exc_info=True)
-        raise UserError(_("Error during account import for PrivatBank: %s") % e)
+        raise UserError(_("Ошибка при импорте счетов: %s") % e)
 
-    # --- Step 2: Import transactions for all linked accounts ---
-    accounts = bank.env['dino.bank.account'].search([('bank_id', '=', bank.id)])
-    if not accounts:
-        # This can happen if the import returned no accounts
-        message = _(
-            "PrivatBank account import complete. No active accounts found to synchronize transactions."
-        )
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {'title': _('PrivatBank Sync'), 'message': message, 'sticky': True}
-        }
+    stats_accounts = import_result.get('stats', {})
+    msg_accounts = _("Импорт балансов завершён. Создано: %d, Обновлено: %d, Пропущено: %d") % (
+        stats_accounts.get('created', 0), stats_accounts.get('updated', 0), stats_accounts.get('skipped', 0)
+    )
 
-    _logger.info("Proceeding to import transactions for %d PrivatBank account(s).", len(accounts))
-    # Step 2: Import transactions for each account and aggregate stats
-    trx_totals = {'created': 0, 'updated': 0, 'skipped': 0}
-    for account in accounts:
-        try:
-            trx_stats = privat_service.import_transactions(bank, account=account)
-            _logger.info('Imported transactions for account %s: %s', account.account_number, trx_stats)
-            for k in ('created', 'updated', 'skipped'):
-                trx_totals[k] += trx_stats.get(k, 0)
-        except Exception as e:
-            _logger.error('Error importing transactions for account %s: %s', account.account_number, e, exc_info=True)
+    try:
+        trans_result = privat_service.import_transactions(bank)
+    except Exception as e:
+        raise UserError(_("Ошибка при импорте транзакций: %s") % e)
 
-    message = _(
-        "PrivatBank Sync Summary:\n"
-        "Accounts Created: %(created)s\n"
-        "Accounts Updated: %(updated)s\n"
-        "Transactions Created: %(tx_created)s\n"
-        "Transactions Updated: %(tx_updated)s\n"
-        "Transactions Skipped: %(tx_skipped)s"
-    ) % {
-        'created': acc_stats.get('created', 0),
-        'updated': acc_stats.get('updated', 0),
-        'tx_created': trx_totals['created'],
-        'tx_updated': trx_totals['updated'],
-        'tx_skipped': trx_totals['skipped'],
-    }
+    stats_trans = trans_result.get('stats', {})
+    msg_trans = _("Импорт транзакций завершён. Создано: %d, Пропущено: %d") % (
+        stats_trans.get('created', 0), stats_trans.get('skipped', 0)
+    )
+    if 'unknown_accounts' in stats_trans:
+        msg_trans += _(", Неизвестные счета: %d") % stats_trans['unknown_accounts']
+
+    full_msg = msg_accounts + "\n" + msg_trans
 
     return {
         'type': 'ir.actions.client',
         'tag': 'display_notification',
-        'params': {'title': _('PrivatBank Sync Finished'), 'message': message, 'sticky': True}
+        'params': {'title': _('Импорт завершён'), 'message': full_msg, 'sticky': False}
     }
 
+def _sync_mono(bank):
+    """Заглушка для синхронизации Монобанка."""
+    _logger.info("Запуск синхронизации Монобанка: %s", bank.name)
 
-def run_mono_sync(bank):
-    """Placeholder for Monobank synchronization logic."""
-    _logger.info("Dispatching to Monobank transaction sync for bank: %s", bank.name)
-    # TODO: Implement the actual logic by calling mono_service
     accounts = bank.env['dino.bank.account'].search([('bank_id', '=', bank.id)])
     if not accounts:
-        raise UserError(_("No accounts are configured for Monobank. Please add accounts to synchronize."))
+        raise UserError(_("Для Монобанка не настроены счета."))
 
-    message = _("Synchronization started for %s account(s) of Monobank.") % len(accounts)
+    # TODO: Вызов реального сервиса mono_service
+
     return {
         'type': 'ir.actions.client',
         'tag': 'display_notification',
-        'params': {'title': _('Monobank Sync'), 'message': message, 'sticky': False}
+        'params': {'title': _('Синхронизация Монобанка'), 'message': _("Запущено для %s счетов") % len(accounts), 'sticky': False}
     }
 
+# ----------------------------------------------------------------------
+# РЕЕСТР ДИСПЕТЧЕРА
+# ----------------------------------------------------------------------
 
-# The main dispatcher registry
-SYNC_DISPATCHER = {
-    const.MFO_NBU: nbu_service.run_sync,
-    const.MFO_PRIVAT: run_privat_sync,
-    const.MFO_MONO: run_mono_sync,
+SYNC_HANDLERS = {
+    const.MFO_NBU: _sync_nbu,
+    const.MFO_PRIVAT: _sync_privat,
+    const.MFO_MONO: _sync_mono,
 }
-
 
 def dispatch_sync(bank):
     """
-    Finds and executes the appropriate sync function for the given bank record.
-    
-    :param bank: A `dino.bank` recordset (should be a singleton).
-    :return: The result of the dispatched function (typically an Odoo action).
+    Основная точка входа. Находит функцию по МФО и вызывает её.
     """
     bank.ensure_one()
-    sync_function = SYNC_DISPATCHER.get(bank.mfo)
 
-    if not sync_function:
-        raise UserError(_("Synchronization is not configured for a bank with MFO %s.") % bank.mfo)
+    handler = SYNC_HANDLERS.get(bank.mfo)
 
-    _logger.info("Dispatching sync for bank '%s' (MFO: %s) to function %s", 
-                 bank.name, bank.mfo, sync_function.__name__)
-    
-    return sync_function(bank)
+    if not handler:
+        raise UserError(_("Синхронизация для банка с МФО %s не настроена.") % bank.mfo)
+
+    _logger.info("Диспетчер: запуск %s для банка '%s'", handler.__name__, bank.name)
+    return handler(bank)

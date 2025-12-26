@@ -27,7 +27,6 @@ class DinoBankTransaction(models.Model):
 
     # Technical & Integration Fields
     external_id = fields.Char(string=_('External ID'), index=True, required=True, help=_("Unique transaction ID from the bank's API."))
-    state = fields.Selection([('draft', 'Draft'), ('processed', 'Processed')], default='draft', index=True)
     mcc = fields.Integer(string="MCC", help="Merchant Category Code (ISO 18245)")
     raw_data = fields.Text(string="Raw Data", help="Stores the original JSON data of the transaction.")
 

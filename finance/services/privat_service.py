@@ -1,284 +1,244 @@
 # -*- coding: utf-8 -*-
-"""High-level Privatbank service.
-Implement mapping from Privat responses to models here.
-"""
 import logging
-import requests
-from odoo import _
+from datetime import datetime
+from odoo import _, fields
 from odoo.exceptions import UserError
-
 from .privat_client import PrivatClient
-from odoo import fields
-from odoo import fields
 
 _logger = logging.getLogger(__name__)
 
-
-def import_accounts(bank):
-    """
-    Fetches all accounts from PrivatBank and creates/updates them in Odoo.
-    :param bank: A `dino.bank` record for PrivatBank.
-    :return: A dictionary with stats (created, updated, skipped).
-    """
-    if not bank.api_key:
-        raise UserError(_("API Key (Token) is not set for PrivatBank."))
-
-    client = PrivatClient(api_key=bank.api_key)
+def _parse_privat_date(date_str, time_str=None):
+    """Парсит дату формата dd.mm.yyyy [HH:MM:SS]"""
+    if not date_str:
+        return False
     try:
-        account_data_list = client.fetch_balances_for_all_accounts()
-    except requests.exceptions.HTTPError as e:
-        status = e.response.status_code if getattr(e, 'response', None) else 'HTTP_ERROR'
-        resp_text = ''
+        if time_str:
+            full_str = f"{date_str} {time_str}"
+            return datetime.strptime(full_str, '%d.%m.%Y %H:%M') # Иногда секунды не приходят, или формат разный
+        return datetime.strptime(date_str, '%d.%m.%Y').date()
+    except ValueError:
+        # Fallback если формат чуть другой
         try:
-            resp_text = (e.response.text or '')[:500]
-        except Exception:
-            resp_text = ''
-        if status in (401, 403):
-            # Explicit user-friendly message for invalid/unauthorized token
-            raise UserError(_('Неверный API-ключ/токен для ПриватБанка (HTTP %s). Проверьте настройки.') % status)
-        if status == 400:
-            # Common case: API reports bad request / 'Недопустимая операция'
-            raise UserError(_('Запрос к PrivatBank вернул HTTP 400 (Недопустимая операция). Ответ сервера: %s') % resp_text)
-        raise UserError(_("Failed to fetch accounts from PrivatBank API. Error: %s") % e)
+            return datetime.strptime(date_str, '%d.%m.%Y').date()
+        except:
+            return False
+
+def get_client(bank):
+    """Фабрика для создания клиента"""
+    if not bank.api_key:
+        raise UserError(_("Не указан токен API для банка %s") % bank.name)
+    return PrivatClient(api_key=bank.api_key, client_id=bank.api_client_id)
+
+
+def import_accounts(bank, startDate=None, endDate=None):
+    """Импорт и обновление балансов."""
+    client = get_client(bank)
+    
+    # Дата по умолчанию - сегодня
+    target_date = startDate or fields.Date.today().strftime('%d-%m-%Y')
+    
+    try:
+        raw_balances = client.fetch_balances(date_str=target_date)
     except Exception as e:
-        raise UserError(_("Failed to fetch accounts from PrivatBank API. Error: %s") % e)
+        raise UserError(_("Ошибка получения балансов: %s") % e)
 
     BankAccount = bank.env['dino.bank.account']
     Currency = bank.env['res.currency']
     
-    created_count = 0
-    updated_count = 0
-    skipped_count = 0
+    # Кэш валют, чтобы не делать search в цикле
+    currency_map = {c.name: c.id for c in Currency.search([('active', '=', True)])}
     
-    for data in account_data_list:
-        iban = data.get('iban')
-        if not iban:
-            _logger.warning("Skipping account data without IBAN: %s", data)
-            skipped_count += 1
+    stats = {'created': 0, 'updated': 0, 'skipped': 0}
+    processed_ids = []
+
+    for data in raw_balances:
+        # Приват может отдавать и acc, и iban. IBAN приоритетнее для уникальности
+        acc_num = data.get('iban') or data.get('acc')
+        currency_code = data.get('currency')
+        
+        if not acc_num:
+            continue
+            
+        curr_id = currency_map.get(currency_code)
+        if not curr_id:
+            # Если UAH не найден - это критично, но пропускаем тихо
+            stats['skipped'] += 1
             continue
 
-        currency_code = data.get('currency')
-        currency = Currency.search([('name', '=', currency_code)], limit=1)
-        if not currency:
-            _logger.warning("Skipping account %s, currency '%s' not found in Odoo.", iban, currency_code)
-            skipped_count += 1
-            continue
+        # Парсим дату обновления баланса
+        balance_date = _parse_privat_date(data.get('dpd', '').split(' ')[0])
 
         vals = {
-            'name': data.get('nameACC', iban),
-            'account_number': iban,
+            'name': data.get('nameACC') or acc_num,
             'bank_id': bank.id,
-            'currency_id': currency.id,
-            'balance': float(data.get('balanceOut', 0.0)),
-            'external_id': data.get('acc'), # PrivatBank uses 'acc' as a unique ID
+            'currency_id': curr_id,
+            'account_number': acc_num,
+            'balance': float(data.get('balanceOut', 0)),
+            'balance_start': float(data.get('balanceIn', 0)),
+            'external_id': data.get('acc'), # Внутренний ID привата, полезен для транзакций
+            'active': True
         }
 
-        existing_account = BankAccount.search([('account_number', '=', iban)], limit=1)
-        if existing_account:
-            existing_account.write(vals)
-            updated_count += 1
+        # Ищем существующий (Upsert logic)
+        existing = BankAccount.search([
+            ('account_number', '=', acc_num), 
+            ('bank_id', '=', bank.id)
+        ], limit=1)
+
+        if existing:
+            existing.write(vals)
+            stats['updated'] += 1
+            processed_ids.append(existing.id)
         else:
-            BankAccount.create(vals)
-            created_count += 1
-            
-    _logger.info(
-        "PrivatBank account import finished for bank %s. Created: %d, Updated: %d, Skipped: %d",
-        bank.name, created_count, updated_count, skipped_count
+            new_acc = BankAccount.create(vals)
+            stats['created'] += 1
+            processed_ids.append(new_acc.id)
+
+    return {'stats': stats, 'accounts': BankAccount.browse(processed_ids)}
+
+
+def import_transactions(bank, startDate=None, endDate=None):
+    """
+    Массовый импорт транзакций по всем счетам сразу (без параметра acc).
+    """
+    client = get_client(bank)
+    TransModel = bank.env['dino.bank.transaction']
+    AccountModel = bank.env['dino.bank.account']
+
+    # 1. Даты
+    if startDate:
+        s_date_val = fields.Date.to_date(startDate)
+    elif bank.start_sync_date:
+        s_date_val = bank.start_sync_date
+    else:
+        raise UserError(_("Для банка '%s' не указана Start Date.") % bank.name)
+
+    s_date_api = s_date_val.strftime('%d-%m-%Y')
+    e_date_api = fields.Date.to_date(endDate).strftime('%d-%m-%Y') if endDate else None
+
+    # 2. Подготовка карты счетов (Mapping)
+    # Нам нужно быстро находить ID счета в Odoo по номеру из JSON (AUT_MY_ACC)
+    # Приват может прислать в AUT_MY_ACC как IBAN, так и внутренний номер.
+    local_accounts = AccountModel.search([('bank_id', '=', bank.id)])
+    acc_map = {}
+    
+    for acc in local_accounts:
+        # Ключом может быть IBAN
+        if acc.account_number:
+            acc_map[acc.account_number] = acc
+        # ИЛИ внутренний ID (acc), если он есть
+        if acc.external_id:
+            acc_map[acc.external_id] = acc
+
+    if not acc_map:
+         raise UserError(_("Не найдено ни одного счета для банка %s") % bank.name)
+
+    _logger.info(f"Запуск массового импорта транзакций с {s_date_api}")
+
+    # 3. Запрос к API без указания конкретного счета (account_num=None)
+    # Клиент будет листать страницы, пока они не закончатся
+    pages_iter = client.get_transactions_generator(
+        account_num=None, 
+        start_date=s_date_api,
+        end_date=e_date_api
     )
+
+    total_created = 0
+    total_skipped = 0
+    unknown_acc_count = 0
+    total_processed = 0
+
+    page_count = 0
+    for trans_batch in pages_iter:
+        page_count += 1
+        batch_size = len(trans_batch) if trans_batch else 0
+        _logger.info(f"Обработка страницы {page_count}: получено {batch_size} транзакций из API")
+        total_processed += batch_size
+
+        if not trans_batch:
+            _logger.debug("Пустая страница, пропускаем")
+            continue
+
+        # --- BATCH OPTIMIZATION ---
+        
+        # Сбор ID для проверки дублей
+        batch_ext_ids = [str(t.get('ID')) for t in trans_batch if t.get('ID')]
+        if not batch_ext_ids:
+            _logger.warning("В пачке нет транзакций с ID, пропускаем")
+            continue
+
+        existing_recs = TransModel.search([
+            ('bank_account_id', 'in', [a.id for a in local_accounts]), # Проверяем по всем счетам банка
+            ('external_id', 'in', batch_ext_ids)
+        ])
+        existing_ids = {r.external_id for r in existing_recs}
+        _logger.info(f"Найдено {len(existing_ids)} дубликатов в базе из {len(batch_ext_ids)} ID")
+
+        vals_list = []
+        batch_created = 0
+        batch_skipped = 0
+        batch_unknown = 0
+
+        for t in trans_batch:
+            # Проверка на дубликат
+            ext_id = str(t.get('ID'))
+            if ext_id in existing_ids:
+                batch_skipped += 1
+                continue
+
+            # Определение счета Odoo
+            # Приват возвращает AUT_MY_ACC - номер нашего счета в этой транзакции
+            my_acc_num = t.get('AUT_MY_ACC')
+            account = acc_map.get(my_acc_num)
+
+            if not account:
+                # Попробуем найти по IBAN из AUT_MY_IBAN (иногда бывает такое поле)
+                alt_acc_num = t.get('AUT_MY_IBAN')
+                if alt_acc_num:
+                    account = acc_map.get(alt_acc_num)
+                if not account:
+                    _logger.warning(f"Не найден счет для транзакции {ext_id}: AUT_MY_ACC={my_acc_num}, AUT_MY_IBAN={alt_acc_num}")
+                    batch_unknown += 1
+                    unknown_acc_count += 1
+                    continue
+
+            # Логика знака (D - расход, C - приход)
+            amount = float(t.get('SUM', 0))
+            if t.get('TRANTYPE') == 'D':
+                amount = -abs(amount)
+            else:
+                amount = abs(amount)
+
+            # Парсинг даты
+            date_val = _parse_privat_date(t.get('DAT_OD'), t.get('TIM_P'))
+            if not date_val:
+                date_val = _parse_privat_date(t.get('DAT_KL'))
+
+            vals_list.append({
+                'bank_account_id': account.id,
+                'external_id': ext_id,
+                'datetime': date_val,
+                'amount': amount,
+                'counterparty_name': t.get('AUT_CNTR_NAM'),
+                'counterparty_edrpou': t.get('AUT_CNTR_CRF'),
+                'counterparty_iban': t.get('AUT_CNTR_ACC'),
+                'description': t.get('OSND') or t.get('REF'),  # Объединяем описание и реф
+                'raw_data': str(t),  # Сохраняем сырой JSON для отладки
+            })
+            batch_created += 1
+
+        if vals_list:
+            TransModel.create(vals_list)
+            total_created += batch_created
+            _logger.info(f"   + Импортировано {batch_created} новых транзакций из пачки")
+        else:
+            _logger.info("   Нет новых транзакций для импорта в этой пачке")
+
+        total_skipped += batch_skipped
+        _logger.info(f"   Статистика пачки: создано {batch_created}, дубли {batch_skipped}, неизвестные счета {batch_unknown}")
+
+    _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, дубли {total_skipped}, неизвестные счета {unknown_acc_count}")
     
     return {
-        'created': created_count,
-        'updated': updated_count,
-        'skipped': skipped_count,
+        'stats': {'created': total_created, 'skipped': total_skipped, 'unknown_accounts': unknown_acc_count}
     }
-
-
-def import_transactions(bank, account=None, days_fallback=30):
-    """
-    Import transactions for a given Privat bank (or for a single account if provided).
-    Uses `TECHNICAL_TRANSACTION_ID` as external identifier when present and paginates via followId.
-
-    :param bank: dino.bank record for Privat
-    :param account: optional dino.bank.account record to limit import to one account
-    :param days_fallback: if neither account.last_import_date nor bank.start_sync_date is set, fallback to this many days
-    :return: dict with stats
-    """
-    if not bank.api_key:
-        raise UserError(_('API Key (Token) is not set for PrivatBank.'))
-
-    client = PrivatClient(api_key=bank.api_key)
-
-    # Check API status before heavy calls
-    try:
-        ok = client.check_api_status()
-    except requests.exceptions.HTTPError as e:
-        status = e.response.status_code if getattr(e, 'response', None) else 'HTTP_ERROR'
-        if status in (401, 403):
-            raise UserError(_('Неверный API-ключ/токен для ПриватБанка (HTTP %s). Проверьте настройки.') % status)
-        raise UserError(_('Failed to check Privat API status: %s') % e)
-    except Exception as e:
-        raise UserError(_('Failed to check Privat API status: %s') % e)
-    if not ok:
-        raise UserError(_('Privat API is not in a working state (maintenance or restricted). Check /settings endpoint.'))
-
-    BankAccount = bank.env['dino.bank.account']
-    TrxModel = bank.env['dino.bank.transaction']
-
-    accounts = account and bank.env['dino.bank.account'].browse(account.id) or BankAccount.search([('bank_id', '=', bank.id), ('active', '=', True)])
-    total_created = 0
-    total_updated = 0
-    total_skipped = 0
-
-    from datetime import datetime, timedelta, date
-
-    for acc in accounts:
-        # Determine startDate (DD-MM-YYYY)
-        if acc.last_import_date:
-            start_dt = acc.last_import_date - timedelta(days=1)
-            start_str = start_dt.strftime('%d-%m-%Y')
-        elif bank.start_sync_date:
-            start_str = bank.start_sync_date.strftime('%d-%m-%Y')
-        else:
-            d = date.today() - timedelta(days=days_fallback)
-            start_str = d.strftime('%d-%m-%Y')
-
-        _logger.info('Starting Privat transactions import for account %s from %s', acc.account_number, start_str)
-
-        created = 0
-        updated = 0
-        skipped = 0
-        latest_txn_dt = None
-
-        try:
-            for page in client.fetch_transactions_iter(start_str, acc=acc.external_id or acc.account_number):
-                if not page or page.get('status') != 'SUCCESS':
-                    _logger.warning('Privat transactions page returned non-success: %s', page)
-                    break
-                txs = page.get('transactions') or []
-                for t in txs:
-                    # Determine external id
-                    ext = t.get('TECHNICAL_TRANSACTION_ID') or None
-                    if not ext:
-                        # fallback to REF+REFN or a composite key
-                        ref = t.get('REF') or t.get('ref') or ''
-                        refn = t.get('REFN') or t.get('refn') or ''
-                        if ref or refn:
-                            ext = f"{ref}-{refn}"
-                        else:
-                            ext = t.get('id') or t.get('uniqueId') or None
-
-                    if not ext:
-                        _logger.warning('Skipping transaction without identifiable external id: %s', t)
-                        skipped += 1
-                        continue
-
-                    # Skip if exists
-                    existing = TrxModel.search([('bank_account_id', '=', acc.id), ('external_id', '=', str(ext))], limit=1)
-                    # Map amount and sign
-                    try:
-                        amount = float(t.get('amount') or t.get('AMOUNT') or 0.0)
-                    except Exception:
-                        amount = 0.0
-                    # If transaction type suggests debit/outflow, make amount negative
-                    tr_type = (t.get('TRANTYPE') or t.get('trantype') or t.get('type') or '')
-                    if isinstance(tr_type, str) and tr_type.lower() in ('d', 'debit', 'out'):
-                        amount = -abs(amount)
-
-                    # Balance after
-                    balance_after = None
-                    for k in ('amountRest', 'balanceAfter', 'balance', 'balanceOutOnce'):
-                        if k in t:
-                            try:
-                                balance_after = float(t.get(k) or 0.0)
-                                break
-                            except Exception:
-                                balance_after = None
-
-                    # Date/time parsing: try a few common keys
-                    dt_val = None
-                    for dk in ('dateTime', 'datetime', 'valueDate', 'date', 'operationDate', 'tranDate'):
-                        if dk in t and t.get(dk):
-                            dt_val = t.get(dk)
-                            break
-                    # Try to normalize dt_val to python datetime string — fallback to now
-                    from dateutil import parser as _dparser
-                    try:
-                        if dt_val:
-                            # Some APIs return 'DD.MM.YYYY HH:MM:SS' or 'YYYY-MM-DD HH:MM:SS'
-                            dt_parsed = _dparser.parse(dt_val, dayfirst=True)
-                        else:
-                            dt_parsed = datetime.utcnow()
-                    except Exception:
-                        dt_parsed = datetime.utcnow()
-
-                    if not latest_txn_dt or dt_parsed > latest_txn_dt:
-                        latest_txn_dt = dt_parsed
-
-                    desc = t.get('description') or t.get('details') or t.get('PAYMENT') or t.get('purpose') or ''
-
-                    payload = {
-                        'external_id': str(ext),
-                        'datetime': fields.Datetime.to_string(dt_parsed),
-                        'amount': amount,
-                        'balance_after': balance_after,
-                        'description': desc,
-                        'counterparty_name': t.get('AUT_CNTR_NAME') or t.get('AUT_MY_NAME') or t.get('NAME') or None,
-                        'counterparty_iban': t.get('AUT_CNTR_ACCOUNT') or t.get('accountTo') or None,
-                        'counterparty_edrpou': t.get('AUT_CNTR_EDRPOU') or t.get('cntrEdrpou') or None,
-                        'mcc': t.get('MCC') or t.get('mcc') or None,
-                        'raw_data': t,
-                    }
-
-                    if existing:
-                        try:
-                            existing.write(payload)
-                            updated += 1
-                        except Exception:
-                            _logger.exception('Failed to update existing transaction %s for account %s', ext, acc.account_number)
-                            skipped += 1
-                        continue
-
-                    # create
-                    try:
-                        TrxModel.create_from_api(acc, payload)
-                        created += 1
-                    except Exception:
-                        _logger.exception('Failed to create transaction %s for account %s: %s', ext, acc.account_number, t)
-                        skipped += 1
-
-                # loop pages until exist_next_page is falsy
-                if not page.get('exist_next_page'):
-                    break
-
-        except requests.exceptions.HTTPError as e:
-            status = e.response.status_code if getattr(e, 'response', None) else 'HTTP_ERROR'
-            resp_text = ''
-            try:
-                resp_text = (e.response.text or '')[:500]
-            except Exception:
-                resp_text = ''
-            if status in (401, 403):
-                raise UserError(_('Неверный API-ключ/токен для ПриватБанка (HTTP %s). Проверьте настройки.') % status)
-            if status == 400:
-                raise UserError(_('Запрос к PrivatBank вернул HTTP 400 (Недопустимая операция). Ответ сервера: %s') % resp_text)
-            _logger.exception('HTTP error while importing transactions for account %s: %s', acc.account_number, e)
-            continue
-        except Exception:
-            _logger.exception('Error while importing transactions for account %s', acc.account_number)
-            continue
-
-        # update last_import_date to latest_txn_dt if found, otherwise now
-        try:
-            if latest_txn_dt:
-                acc.last_import_date = latest_txn_dt
-            else:
-                acc.last_import_date = fields.Datetime.now()
-        except Exception:
-            _logger.exception('Failed to set last_import_date for account %s', acc.account_number)
-
-        _logger.info('Privat transactions import finished for account %s: created=%d updated=%d skipped=%d', acc.account_number, created, updated, skipped)
-        total_created += created
-        total_updated += updated
-        total_skipped += skipped
-
-    return {'created': total_created, 'updated': total_updated, 'skipped': total_skipped}

@@ -11,7 +11,14 @@ class DinoBankAccount(models.Model):
     bank_id = fields.Many2one('dino.bank', string=_('Bank'), required=True, ondelete='restrict')
     account_number = fields.Char(string=_('Account Number (IBAN)'), required=True)
     currency_id = fields.Many2one('res.currency', string=_('Currency'), required=True)
-    balance = fields.Monetary(string=_('Current Balance'), currency_field='currency_id')
+    
+    # Balance fields from API
+    balance = fields.Monetary(string=_('Current Balance (Out)'), currency_field='currency_id', help="Исходящий остаток на конец дня")
+    balance_start = fields.Monetary(string=_('Start Balance (In)'), currency_field='currency_id', help="Входящий остаток на начало дня")
+    turnover_debit = fields.Monetary(string=_('Turnover Debit'), currency_field='currency_id', help="Сумма списаний за период")
+    turnover_credit = fields.Monetary(string=_('Turnover Credit'), currency_field='currency_id', help="Сумма зачислений за период")
+    balance_end_date = fields.Date(string="Balance Date", help="Дата, на которую актуальны балансы")
+
     last_import_date = fields.Datetime(string=_('Last Import'))
 
     # Technical fields

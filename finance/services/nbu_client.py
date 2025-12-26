@@ -1,60 +1,101 @@
 # -*- coding: utf-8 -*-
-"""Low-level NBU HTTP client with simple caching and helpers."""
 import requests
 import logging
 from datetime import datetime, timedelta
 
 _logger = logging.getLogger(__name__)
 
-_NBU_BANKS_CACHE = {'ts': None, 'banks': []}
-
+# Глобальный кэш (в рамках процесса Odoo)
+_BANKS_CACHE = {'data': [], 'expires': datetime.min}
 
 class NBUClient:
-    """Simple client for NBU endpoints used by services.
-
-    Methods are simple and return parsed JSON (list/dicts) or raise requests exceptions.
     """
+    Клиент для API НБУ. 
+    Использует requests.Session для ускорения серии запросов.
+    """
+    
+    BASE_URL = 'https://bank.gov.ua'
 
     def __init__(self, user_agent='DinoERP/1.0', timeout=20):
-        self.user_agent = user_agent
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': user_agent,
+            'Accept': 'application/json'
+        })
         self.timeout = timeout
 
     def get_banks(self, refresh=False):
-        cache_ttl = timedelta(hours=24)
-        now = datetime.utcnow()
-        if not refresh and _NBU_BANKS_CACHE['ts'] and (now - _NBU_BANKS_CACHE['ts']) < cache_ttl:
-            return _NBU_BANKS_CACHE['banks']
+        """Получает список банков (кэш на 24 часа)."""
+        now = datetime.now()
+        
+        # Если кэш валиден — отдаем его сразу
+        if not refresh and _BANKS_CACHE['expires'] > now:
+            return _BANKS_CACHE['data']
 
-        urls = [
-            'https://bank.gov.ua/NBUStatService/v1/statdirectory/banks?json',
-            'https://bank.gov.ua/NBUStatService/v1/statdirectory/banks'
+        # Список эндпоинтов (основной и резервный)
+        endpoints = [
+            '/NBUStatService/v1/statdirectory/banks?json',
+            '/NBUStatService/v1/statdirectory/banks' # Бывает, что json отдается и без явного ?json
         ]
-        headers = {'Accept': 'application/json', 'User-Agent': self.user_agent}
-        banks = []
-        for url in urls:
+
+        for ep in endpoints:
             try:
-                resp = requests.get(url, timeout=self.timeout, headers=headers)
-                if resp.status_code == 400:
-                    continue
-                resp.raise_for_status()
-                banks = resp.json()
-                break
+                # session.get автоматически подставит базовые хедеры
+                resp = self.session.get(f"{self.BASE_URL}{ep}", timeout=self.timeout)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    # Обновляем кэш
+                    _BANKS_CACHE['data'] = data
+                    _BANKS_CACHE['expires'] = now + timedelta(hours=24)
+                    return data
             except requests.RequestException as e:
-                _logger.warning('NBU banks lookup failed for url %s: %s', url, e)
+                _logger.warning("NBU API warning (%s): %s", ep, e)
                 continue
+        
+        # Если ничего не сработало
+        _logger.error("Не удалось получить список банков НБУ ни по одному адресу.")
+        return []
 
-        _NBU_BANKS_CACHE['ts'] = now
-        _NBU_BANKS_CACHE['banks'] = banks
-        return banks
-
-    def fetch_exchange(self, start_date, end_date, valcode):
-        """Fetch exchange data for a value code in a date range.
-        start_date / end_date are date objects; returns list of records (dicts).
+    def fetch_exchange(self, start_date, end_date, valcode=None):
         """
-        s_str = start_date.strftime('%Y%m%d')
-        e_str = end_date.strftime('%Y%m%d')
-        headers = {'Accept': 'application/json', 'User-Agent': self.user_agent}
-        url = f'https://bank.gov.ua/NBU_Exchange/exchange_site?start={s_str}&end={e_str}&valcode={valcode}&sort=exchangedate&order=asc&json'
-        resp = requests.get(url, timeout=self.timeout, headers=headers)
-        resp.raise_for_status()
-        return resp.json()
+        Получает курсы валют за период.
+        Использует params для безопасного формирования URL.
+        """
+        url = f"{self.BASE_URL}/NBU_Exchange/exchange_site"
+        
+        params = {
+            'start': start_date.strftime('%Y%m%d'),
+            'end': end_date.strftime('%Y%m%d'),
+            'sort': 'exchangedate',
+            'order': 'asc',
+            'json': '' # Пустой ключ для флага &json
+        }
+        
+        if valcode:
+            params['valcode'] = valcode
+
+        try:
+            resp = self.session.get(url, params=params, timeout=self.timeout)
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as e:
+            _logger.error("Ошибка получения курсов НБУ: %s", e)
+            raise
+
+    def get_bank_info(self, mfo):
+        """Получает инфо по конкретному МФО."""
+        url = f"{self.BASE_URL}/NBU_BankInfo/get_data_branch"
+        params = {'glmfo': mfo, 'json': ''}
+
+        try:
+            resp = self.session.get(url, params=params, timeout=self.timeout)
+            
+            # Хак для НБУ: иногда API глючит с ?json, пробуем без него
+            if resp.status_code == 400:
+                resp = self.session.get(url, params={'glmfo': mfo}, timeout=self.timeout)
+            
+            resp.raise_for_status()
+            return resp.json()
+        except requests.RequestException as e:
+            _logger.warning("Ошибка поиска банка по МФО %s: %s", mfo, e)
+            raise
