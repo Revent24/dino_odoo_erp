@@ -24,6 +24,8 @@ class DinoBankTransaction(models.Model):
     counterparty_name = fields.Char(string=_('Counterparty Name'))
     counterparty_iban = fields.Char(string=_('Counterparty IBAN'))
     counterparty_edrpou = fields.Char(string=_('Counterparty EDRPOU'))
+    counterparty_bank_name = fields.Char(string=_('Bank Name'))
+    counterparty_bank_city = fields.Char(string=_('Bank City'))
 
     # Technical & Integration Fields
     external_id = fields.Char(string=_('External ID'), index=True, required=True, help=_("Unique transaction ID from the bank's API."))

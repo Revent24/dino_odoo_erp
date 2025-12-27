@@ -36,13 +36,13 @@ class DinoPartner(models.Model):
     contact_ids = fields.One2many('dino.partner.contact', 'partner_id', string='Contacts')
 
     project_ids = fields.One2many('dino.project', 'partner_id', string='Projects')
-    project_count = fields.Integer(string='Projects', compute='_compute_project_count')
+    project_count = fields.Integer(string='Number of Projects', compute='_compute_project_count')
 
     partner_nomenclature_ids = fields.One2many('dino.partner.nomenclature', 'partner_id', string='Nomenclature Mapping')
     partner_nomenclature_count = fields.Integer(string='Nomenclature', compute='_compute_partner_nomenclature_count')
 
     document_ids = fields.One2many('dino.operation.document', 'partner_id', string='Documents')
-    document_count = fields.Integer(string='Documents', compute='_compute_document_count')
+    document_count = fields.Integer(string='Number of Documents', compute='_compute_document_count')
 
     def _compute_partner_nomenclature_count(self):
         for rec in self:

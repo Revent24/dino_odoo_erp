@@ -25,6 +25,7 @@ class DinoBankAccount(models.Model):
     external_id = fields.Char(string=_('External ID'), index=True, help=_("The unique account identifier from the bank's API."))
     account_type = fields.Char(string=_('Account Type'), help=_("e.g., 'black', 'white' for Monobank."))
     active = fields.Boolean(string=_('Active'), default=True)
+    show_in_transactions = fields.Boolean(string=_('Показывать транзакции'), default=True)
 
     _sql_constraints = [
         ('account_number_uniq', 'unique(account_number)', 'The account number (IBAN) must be unique!'),

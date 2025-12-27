@@ -47,7 +47,6 @@
 
 
         'finance/data/ir_cron_data.xml',
-        'finance/views/dino_currency_rate_views.xml',
         'core/views/menu.xml',
     ],
     # assets removed: category sidebar feature was rolled back
