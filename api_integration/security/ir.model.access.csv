@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dino_api_endpoint_user,dino.api.endpoint user,model_dino_api_endpoint,base.group_user,1,0,0,0
+access_dino_api_endpoint_manager,dino.api.endpoint manager,model_dino_api_endpoint,base.group_system,1,1,1,1
+access_dino_api_log_user,dino.api.log user,model_dino_api_log,base.group_user,1,0,0,0
+access_dino_api_log_manager,dino.api.log manager,model_dino_api_log,base.group_system,1,1,1,1

@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+    <!-- List view for API Endpoints -->
+    <record id="dino_api_endpoint_list" model="ir.ui.view">
+      <field name="name">dino.api.endpoint.list</field>
+      <field name="model">dino.api.endpoint</field>
+      <field name="arch" type="xml">
+        <list string="API Endpoints">
+          <field name="name"/>
+          <field name="operation_type"/>
+          <field name="active" widget="boolean_toggle"/>
+          <field name="cron_active" widget="boolean_toggle"/>
+          <field name="last_result"/>
+          <field name="last_sync_date"/>
+          <field name="next_run"/>
+        </list>
+      </field>
+    </record>
+
+    <!-- Form view for API Endpoints -->
+    <record id="dino_api_endpoint_form" model="ir.ui.view">
+      <field name="name">dino.api.endpoint.form</field>
+      <field name="model">dino.api.endpoint</field>
+      <field name="arch" type="xml">
+        <form string="API Endpoint">
+          <header>
+            <button name="run_endpoint" type="object" string="Run Now" class="btn-primary" invisible="not cron_active or not active"/>
+            <button name="test_endpoint" type="object" string="Test" class="btn-secondary" invisible="not active"/>
+            <field name="active" string="🔒" widget="boolean_toggle"/>
+          </header>
+          <sheet>
+            <div class="oe_title">
+              <h1><field name="name" readonly="active"/></h1>
+            </div>
+            <group>
+              <group string="General">
+                <field name="operation_type" readonly="active"/>
+                <field name="description" readonly="active"/>
+              </group>
+              <group string="Settings">
+                <field name="start_date" readonly="active"/>
+                <field name="force_full_sync" readonly="active"/>
+                <field name="cron_active" readonly="active"/>
+              </group>
+            </group>
+
+
+            <notebook readonly="active">
+              <page string="Authentication" invisible="not show_token and not show_api_key">
+                <group>
+                  <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
+                  <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
+                </group>
+              </page>
+
+              <page string="Cron Settings" invisible="not cron_active">
+                <group>
+                  <field name="cron_interval_number" invisible="not cron_active" readonly="active"/>
+                  <field name="cron_interval_type" invisible="not cron_active" readonly="active"/>
+                  <field name="cron_time_of_day" invisible="not cron_active" readonly="active"/>
+                  <field name="next_run" readonly="1"/>
+                </group>
+              </page>
+
+              <page string="Log History">
+                <field name="log_ids"/>
+              </page>
+            </notebook> 
+          </sheet>
+        </form>
+      </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="dino_api_endpoint_search" model="ir.ui.view">
+      <field name="name">dino.api.endpoint.search</field>
+      <field name="model">dino.api.endpoint</field>
+      <field name="arch" type="xml">
+        <search>
+          <field name="name"/>
+          <field name="operation_type"/>
+          <filter name="active" string="Active" domain="[('active', '=', True)]"/>
+          <filter name="cron_active" string="Scheduled" domain="[('cron_active', '=', True)]"/>
+        </search>
+      </field>
+    </record>
+    <!-- List view for API Logs -->
+    <record id="dino_api_log_list" model="ir.ui.view">
+      <field name="name">dino.api.log.list</field>
+      <field name="model">dino.api.log</field>
+      <field name="arch" type="xml">
+        <list string="API Logs" create="false" edit="false" delete="false">
+          <field name="executed_at"/>
+          <field name="trigger_type"/>
+          <field name="status"/>
+          <field name="execution_time"/>
+          <field name="error_message" optional="hide"/>
+        </list>
+      </field>
+    </record>
+  </data>
+</odoo>

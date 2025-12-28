@@ -47,6 +47,9 @@
 
 
         'finance/data/ir_cron_data.xml',
+        'api_integration/security/ir.model.access.csv',
+        'api_integration/views/dino_api_menu.xml',
+        'api_integration/views/dino_api_endpoint_views.xml',
         'core/views/menu.xml',
     ],
     # assets removed: category sidebar feature was rolled back

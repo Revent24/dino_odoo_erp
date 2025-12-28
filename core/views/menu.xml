@@ -78,7 +78,31 @@
     <menuitem id="menu_dino_stock_uom" name="Units of Measure" parent="menu_dino_stock_config" action="dino_uom_action" sequence="2"/>
   
 
+    <!-- Action for API Endpoints List -->
+   <record id="action_dino_api_endpoint_list" model="ir.actions.act_window">
+     <field name="name">API Endpoints</field>
+     <field name="res_model">dino.api.endpoint</field>
+     <field name="view_mode">list,form</field>
+     <field name="help" type="html">
+       <p class="o_view_nocontent_smiling_face">
+         Configure API integrations for banks and external services
+       </p>
+     </field>
+   </record>
+
+
+   <!-- API Integration в Bank меню -->
+   <menuitem id="menu_dino_api_integration"
+             name="API Integration"
+             parent="menu_dino_bank_root"
+             action="action_dino_api_endpoint_list"
+             sequence="10"/>
+
   
+ 
+
+
+
   
   </data>
 </odoo>
