@@ -27,6 +27,7 @@ class DinoApiEndpoint(models.Model):
         ('nbu_rates', 'Импорт курсов валют НБУ'),
         ('privat_balances', 'Импорт балансов счетов ПриватБанк'),
         ('privat_transactions', 'Импорт транзакций ПриватБанк'),
+        ('privat_balance_history', 'Импорт истории балансов ПриватБанк'),
         ('mono_client_info', 'Получение информации о клиенте Монобанк'),
         ('mono_rates', 'Импорт курсов валют Монобанк'),
         ('mono_transactions', 'Импорт транзакций Монобанк'),
@@ -234,6 +235,7 @@ class DinoApiEndpoint(models.Model):
             'nbu_rates': [],
             'privat_balances': ['token', 'api_key'],
             'privat_transactions': ['token', 'api_key'],
+            'privat_balance_history': ['token', 'api_key'],
             'mono_client_info': ['token'],
             'mono_rates': ['token'],
             'mono_transactions': ['token'],
@@ -243,6 +245,7 @@ class DinoApiEndpoint(models.Model):
             'nbu_rates': False,  # NBU is fixed
             'privat_balances': True,
             'privat_transactions': True,
+            'privat_balance_history': True,
             'mono_client_info': True,
             'mono_rates': True,
             'mono_transactions': True,
@@ -323,6 +326,7 @@ class DinoApiEndpoint(models.Model):
         """Get the appropriate handler class"""
         from ..services.handlers import (
             NbuRatesHandler, PrivatBalancesHandler, PrivatTransactionsHandler,
+            PrivatBalanceHistoryHandler,
             MonoClientInfoHandler, MonoRatesHandler, MonoTransactionsHandler,
             PartnersUpdateHandler
         )
@@ -331,6 +335,7 @@ class DinoApiEndpoint(models.Model):
             'nbu_rates': NbuRatesHandler,
             'privat_balances': PrivatBalancesHandler,
             'privat_transactions': PrivatTransactionsHandler,
+            'privat_balance_history': PrivatBalanceHistoryHandler,
             'mono_client_info': MonoClientInfoHandler,
             'mono_rates': MonoRatesHandler,
             'mono_transactions': MonoTransactionsHandler,

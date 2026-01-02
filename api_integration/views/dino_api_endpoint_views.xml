@@ -49,13 +49,17 @@
 
 
             <notebook readonly="active">
+              <page string="Log History">
+                <field name="log_ids"/>
+              </page>
+
               <page string="Authentication" invisible="not show_token and not show_api_key">
                 <group>
                   <group>
                     <field name="bank_id" invisible="not show_bank" readonly="active" 
                         domain="['|', '|', 
                                   ('mfo', '=', '322001' if operation_type in ['mono_client_info', 'mono_rates', 'mono_transactions'] else '305299'),
-                                  ('mfo', '=', '305299' if operation_type in ['privat_balances', 'privat_transactions'] else '322001'),
+                                  ('mfo', '=', '305299' if operation_type in ['privat_balances', 'privat_transactions', 'privat_balance_history'] else '322001'),
                                   ('mfo', '=', False)]"/>
                     <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
                     <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
@@ -98,10 +102,6 @@
                     <field name="cron_priority" readonly="active"/>
                   </group>
                   </group>
-              </page>
-
-              <page string="Log History">
-                <field name="log_ids"/>
               </page>
             </notebook> 
           </sheet>

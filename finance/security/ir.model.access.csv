@@ -1,5 +1,6 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_dino_bank_transaction,dino.bank.transaction,model_dino_bank_transaction,base.group_user,1,1,1,1
+access_dino_bank_balance_history,dino.bank.balance.history,model_dino_bank_balance_history,base.group_user,1,1,1,1
 access_dino_currency_rate,dino.currency.rate,model_dino_currency_rate,base.group_user,1,1,1,1
 access_dino_cashbook,dino.cashbook,model_dino_cashbook,base.group_user,1,1,1,1
 access_dino_bank,dino.bank,model_dino_bank,base.group_user,1,1,1,1

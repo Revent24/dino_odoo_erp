@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="view_dino_bank_balance_history_tree" model="ir.ui.view">
+            <field name="name">dino.bank.balance.history.tree</field>
+            <field name="model">dino.bank.balance.history</field>
+            <field name="arch" type="xml">
+                <list string="Balance History">
+                    <field name="date"/>
+                    <field name="bank_account_id"/>
+                    <field name="balance_start"/>
+                    <field name="turnover_debit"/>
+                    <field name="turnover_credit"/>
+                    <field name="balance_end"/>
+                    <field name="balance_change"/>
+                    <field name="is_final" optional="hide"/>
+                    <field name="currency_id" column_invisible="1"/>
+                </list>
+            </field>
+        </record>
+
+        <record id="view_dino_bank_balance_history_form" model="ir.ui.view">
+            <field name="name">dino.bank.balance.history.form</field>
+            <field name="model">dino.bank.balance.history</field>
+            <field name="arch" type="xml">
+                <form string="Balance History">
+                    <sheet>
+                        <group>
+                            <group string="Account Info">
+                                <field name="date"/>
+                                <field name="bank_account_id"/>
+                                <field name="currency_id"/>
+                                <field name="is_final"/>
+                            </group>
+                            <group string="Balance Details">
+                                <field name="balance_start"/>
+                                <field name="turnover_debit"/>
+                                <field name="turnover_credit"/>
+                                <field name="balance_end"/>
+                                <field name="balance_change"/>
+                            </group>
+                        </group>
+                        <group string="Technical Info">
+                            <group>
+                                <field name="last_movement_date"/>
+                                <field name="import_date"/>
+                            </group>
+                            <group>
+                                <field name="external_id"/>
+                            </group>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_dino_bank_balance_history" model="ir.actions.act_window">
+            <field name="name">Balance History</field>
+            <field name="res_model">dino.bank.balance.history</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

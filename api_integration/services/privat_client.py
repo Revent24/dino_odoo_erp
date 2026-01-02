@@ -40,6 +40,13 @@ class PrivatClient:
         url = f"{BASE_URL}{endpoint}"
         try:
             response = self.session.get(url, params=params, timeout=self.timeout)
+            
+            # Обработка ошибки 416 - дата за пределами доступного диапазона
+            if response.status_code == 416:
+                error_msg = f"Дата {params.get('startDate')} за пределами доступного диапазона API ПриватБанк. Рекомендуется использовать данные не старше 1095 дней (3 года)."
+                _logger.error(error_msg)
+                return {'status': 'ERROR', 'error': error_msg, 'transactions': [], 'balances': []}
+            
             response.raise_for_status()
             
             # Приват часто отдает cp1251, requests иногда не угадывает
@@ -110,6 +117,11 @@ class PrivatClient:
 
             data = self._get('/statements/transactions', params=params)
 
+            # Если статус ERROR (например, 416), логируем и прерываем
+            if data.get('status') == 'ERROR':
+                _logger.error(f"API error: {data.get('error')}")
+                raise Exception(data.get('error', 'Unknown API error'))
+            
             # Если статус не SUCCESS, прерываем
             if data.get('status') != 'SUCCESS':
                 _logger.warning(f"Error fetching transactions page for {account_num}: {data}")
@@ -118,6 +130,52 @@ class PrivatClient:
             transactions = data.get('transactions', [])
             if transactions:
                 yield transactions
+
+            # Проверка на наличие следующей страницы
+            if data.get('exist_next_page') and data.get('next_page_id'):
+                follow_id = data['next_page_id']
+                if self.request_delay:
+                    time.sleep(self.request_delay)
+            else:
+                break
+
+    def get_balance_history_generator(self, account_num=None, start_date=None, end_date=None, limit=100):
+        """
+        Генератор, который листает страницы истории балансов.
+        Автоматически обрабатывает followId.
+        """
+        params = {
+            'startDate': start_date,
+            'limit': limit
+        }
+        # Добавляем acc только если он передан
+        if account_num:
+            params['acc'] = account_num
+
+        if end_date:
+            params['endDate'] = end_date
+
+        follow_id = None
+
+        while True:
+            if follow_id:
+                params['followId'] = follow_id
+
+            data = self._get('/statements/balance', params=params)
+
+            # Если статус ERROR (например, 416), логируем и прерываем
+            if data.get('status') == 'ERROR':
+                _logger.error(f"API error: {data.get('error')}")
+                raise Exception(data.get('error', 'Unknown API error'))
+            
+            # Если статус не SUCCESS, прерываем
+            if data.get('status') != 'SUCCESS':
+                _logger.warning(f"Error fetching balance history page for {account_num}: {data}")
+                break
+
+            balances = data.get('balances', [])
+            if balances:
+                yield balances
 
             # Проверка на наличие следующей страницы
             if data.get('exist_next_page') and data.get('next_page_id'):

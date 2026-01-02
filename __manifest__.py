@@ -10,9 +10,9 @@
         'finance/views/dino_bank_views.xml',
         'finance/views/dino_bank_acc_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
+        'finance/views/dino_bank_balance_history_views.xml',
         'finance/views/dino_currency_rate_views.xml',
         'finance/views/dino_cashbook_views.xml',
-        'core/views/minimal_views.xml',
 
         # Documents module views (moved before projects to ensure views validate)
         # Wizard for importing specifications must be loaded before the document form that references it

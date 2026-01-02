@@ -129,17 +129,36 @@ def import_transactions(endpoint, startDate=None, endDate=None):
     else:
         raise UserError(_("Start Date not specified for endpoint '%s'.") % endpoint.name)
 
+    # Подготовка карты счетов (для поиска максимальной даты)
+    local_accounts = AccountModel.search([
+        ('bank_id', '=', bank.id),
+        ('active', '=', True)
+    ])
+
+    # Логика Force Full Sync
+    if not endpoint.force_full_sync:
+        # Без полной синхронизации - импортируем только новые данные
+        # Находим максимальную дату транзакций для любого активного счета
+        max_date = TransModel.search([
+            ('bank_account_id', 'in', local_accounts.ids)
+        ], order='datetime desc', limit=1).datetime
+        
+        if max_date:
+            # Начинаем с найденной максимальной даты (день транзакции)
+            s_date_val = max_date.date()
+            _logger.info(f"Incremental sync: starting from last transaction date {s_date_val}")
+        else:
+            # Если транзакций нет - используем configured start_date
+            _logger.info(f"No transactions found, using configured start_date {s_date_val}")
+    else:
+        _logger.info(f"Full sync: starting from configured start_date {s_date_val}")
+
     s_date_api = s_date_val.strftime('%d-%m-%Y')
     e_date_api = fields.Date.to_date(endDate).strftime('%d-%m-%Y') if endDate else None
 
     # 2. Подготовка карты счетов (Mapping)
     # Нам нужно быстро находить ID счета в Odoo по номеру из JSON (AUT_MY_ACC)
     # Приват может прислать в AUT_MY_ACC как IBAN, так и внутренний номер.
-    # Импортируем транзакции только по активным счетам
-    local_accounts = AccountModel.search([
-        ('bank_id', '=', bank.id),
-        ('active', '=', True)
-    ])
     acc_map = {}
     
     for acc in local_accounts:

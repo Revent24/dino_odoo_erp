@@ -152,6 +152,22 @@ class PrivatTransactionsHandler(BaseApiHandler):
         return self._standardize_result(result)
 
 
+class PrivatBalanceHistoryHandler(BaseApiHandler):
+    """Handler for Privat balance history"""
+    required_auth_fields = ['token', 'api_key']
+
+    def execute(self):
+        from .privat_balance_history import import_balance_history
+
+        # Используем start_date из самой модели endpoint, НЕ из config_params
+        result = import_balance_history(
+            self.endpoint,
+            startDate=self.endpoint.start_date  # Берем из поля модели
+        )
+
+        return self._standardize_result(result)
+
+
 # Placeholder handlers for Mono and Partners
 class MonoClientInfoHandler(BaseApiHandler):
     required_auth_fields = ['token']
