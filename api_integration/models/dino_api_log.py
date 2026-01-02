@@ -12,11 +12,13 @@ class DinoApiLog(models.Model):
     trigger_type = fields.Selection([
         ('manual', 'Manual'),
         ('cron', 'Cron'),
-        ('test', 'Test')
+        ('test', 'Test'),
+        ('progress', 'Progress')
     ], string='Trigger Type', default='manual')
     status = fields.Selection([
         ('success', 'Success'),
-        ('error', 'Error')
+        ('error', 'Error'),
+        ('info', 'Info')
     ], string='Status', required=True)
 
     request_data = fields.Text(string='Request Data')

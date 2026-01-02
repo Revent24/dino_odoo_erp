@@ -17,7 +17,7 @@ def run_health_check():
 
     # Import the client and run the check
     try:
-        from odoo.addons.dino_erp.finance.services.privat_client import PrivatClient
+        from odoo.addons.dino_erp.api_integration.services.privat_client import PrivatClient
         
         print("Инициализация PrivatClient...")
         client = PrivatClient(api_key=bank.api_key, client_id=bank.api_client_id)

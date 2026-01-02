@@ -1,6 +1,6 @@
 import json
 import responses
-from finance.services.nbu_client import NBUClient
+from api_integration.services.nbu_client import NBUClient
 
 BASE = "https://bank.gov.ua"
 

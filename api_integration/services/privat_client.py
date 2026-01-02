@@ -68,6 +68,24 @@ class PrivatClient:
         data = self._get('/statements/balance', params=params)
         return data.get('balances', []) if data.get('status') == 'SUCCESS' else []
 
+    def fetch_exchange(self, date=None):
+        """
+        Получает курсы валют Приватбанка (покупка/продажа).
+        Возвращает список словарей с ключами: ccy, base_ccy, buy, sale
+        """
+        url = "https://api.privatbank.ua/p24api/pubinfo"
+        params = {'exchange': '', 'coursid': '5'}  # coursid=5 - наличные курсы
+
+        try:
+            response = self.session.get(url, params=params, timeout=self.timeout)
+            response.raise_for_status()
+            data = response.json()
+            _logger.info(f"Privat exchange rates received: {len(data) if data else 0} currencies")
+            return data if data else []
+        except requests.RequestException as e:
+            _logger.error(f"PrivatBank exchange API error: {e}")
+            raise
+
     def get_transactions_generator(self, account_num=None, start_date=None, end_date=None, limit=100):
         """
         Генератор, который листает страницы транзакций.
@@ -80,18 +98,18 @@ class PrivatClient:
         # Добавляем acc только если он передан
         if account_num:
             params['acc'] = account_num
-            
+
         if end_date:
             params['endDate'] = end_date
 
         follow_id = None
-        
+
         while True:
             if follow_id:
                 params['followId'] = follow_id
-            
+
             data = self._get('/statements/transactions', params=params)
-            
+
             # Если статус не SUCCESS, прерываем
             if data.get('status') != 'SUCCESS':
                 _logger.warning(f"Error fetching transactions page for {account_num}: {data}")
@@ -100,7 +118,7 @@ class PrivatClient:
             transactions = data.get('transactions', [])
             if transactions:
                 yield transactions
-            
+
             # Проверка на наличие следующей страницы
             if data.get('exist_next_page') and data.get('next_page_id'):
                 follow_id = data['next_page_id']

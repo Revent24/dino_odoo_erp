@@ -9,8 +9,8 @@
         <list string="API Endpoints">
           <field name="name"/>
           <field name="operation_type"/>
-          <field name="active" widget="boolean_toggle"/>
-          <field name="cron_active" widget="boolean_toggle"/>
+          <field name="active" widget="boolean_toggle" readonly="1"/>
+          <field name="cron_active" widget="boolean_toggle" readonly="1"/>
           <field name="last_result"/>
           <field name="last_sync_date"/>
           <field name="next_run"/>
@@ -25,9 +25,10 @@
       <field name="arch" type="xml">
         <form string="API Endpoint">
           <header>
-            <button name="run_endpoint" type="object" string="Run Now" class="btn-primary" invisible="not cron_active or not active"/>
-            <button name="test_endpoint" type="object" string="Test" class="btn-secondary" invisible="not active"/>
-            <field name="active" string="🔒" widget="boolean_toggle"/>
+            <button name="action_activate" type="object" string="Activate" class="btn-success" invisible="active"/>
+            <button name="action_deactivate" type="object" string="Deactivate" class="btn-warning" invisible="not active or cron_running"/>
+            <button name="run_endpoint" type="object" string="Run Now" class="btn-primary" invisible="not active or cron_running"/>
+            <button name="action_stop" type="object" string="Stop" class="btn-danger" invisible="not active or not cron_running"/>
           </header>
           <sheet>
             <div class="oe_title">
@@ -42,6 +43,7 @@
                 <field name="start_date" readonly="active"/>
                 <field name="force_full_sync" readonly="active"/>
                 <field name="cron_active" readonly="active"/>
+                <field name="next_run" readonly="1"/>
               </group>
             </group>
 
@@ -49,18 +51,49 @@
             <notebook readonly="active">
               <page string="Authentication" invisible="not show_token and not show_api_key">
                 <group>
+                  <field name="bank_id" invisible="not show_bank" readonly="active" 
+                       domain="['|', '|', 
+                                ('mfo', '=', '322001' if operation_type in ['mono_client_info', 'mono_rates', 'mono_transactions'] else '305299'),
+                                ('mfo', '=', '305299' if operation_type in ['privat_balances', 'privat_transactions'] else '322001'),
+                                ('mfo', '=', False)]"/>
                   <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
                   <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
                 </group>
               </page>
 
               <page string="Cron Settings" invisible="not cron_active">
-                <group>
-                  <field name="cron_interval_number" invisible="not cron_active" readonly="active"/>
-                  <field name="cron_interval_type" invisible="not cron_active" readonly="active"/>
-                  <field name="cron_time_of_day" invisible="not cron_active" readonly="active"/>
-                  <field name="next_run" readonly="1"/>
-                </group>
+                  <group>
+                  <group string="Base Recurrence">
+                      <field name="cron_interval_number" readonly="active"/>
+                      <field name="cron_interval_type" readonly="active"/>
+                      <field name="cron_day_of_month" readonly="active" invisible="cron_interval_type != 'months'"/>
+                      <field name="cron_last_day_of_month" readonly="active" invisible="cron_interval_type != 'months'"/>
+                      <field name="cron_start_time" widget="float_time" readonly="active"/>
+                      <field name="cron_end_time" widget="float_time" readonly="active" invisible="cron_interval_type in ['days', 'weeks', 'months']"/>
+                  </group>
+                
+                  <group string="Advanced Filters">
+                    <label for="cron_monday" string="Weekdays"/>
+                    <div class="o_row">
+                      <label for="cron_monday" string="Mon"/>
+                      <field name="cron_monday" readonly="active" nolabel="1"/>
+                      <label for="cron_tuesday" string="Tue"/>
+                      <field name="cron_tuesday" readonly="active" nolabel="1"/>
+                      <label for="cron_wednesday" string="Wed"/>
+                      <field name="cron_wednesday" readonly="active" nolabel="1"/>
+                      <label for="cron_thursday" string="Thu"/>
+                      <field name="cron_thursday" readonly="active" nolabel="1"/>
+                      <label for="cron_friday" string="Fri"/>
+                      <field name="cron_friday" readonly="active" nolabel="1"/>
+                      <label for="cron_saturday" string="Sat"/>
+                      <field name="cron_saturday" readonly="active" nolabel="1"/>
+                      <label for="cron_sunday" string="Sun"/>
+                      <field name="cron_sunday" readonly="active" nolabel="1"/>
+                    </div>
+                    <field name="cron_timezone" readonly="active"/>
+                    <field name="cron_priority" readonly="active"/>
+                  </group>
+                  </group>
               </page>
 
               <page string="Log History">
@@ -72,6 +105,7 @@
       </field>
     </record>
 
+
     <!-- Search view -->
     <record id="dino_api_endpoint_search" model="ir.ui.view">
       <field name="name">dino.api.endpoint.search</field>
@@ -80,11 +114,15 @@
         <search>
           <field name="name"/>
           <field name="operation_type"/>
-          <filter name="active" string="Active" domain="[('active', '=', True)]"/>
-          <filter name="cron_active" string="Scheduled" domain="[('cron_active', '=', True)]"/>
+          <filter string="Active" name="active" domain="[('active', '=', True)]"/>
+          <filter string="Archived" name="inactive" domain="[('active', '=', False)]"/>
+          <separator/>
+          <filter string="All" name="all" domain="['|', ('active', '=', True), ('active', '=', False)]"/>
         </search>
       </field>
     </record>
+
+
     <!-- List view for API Logs -->
     <record id="dino_api_log_list" model="ir.ui.view">
       <field name="name">dino.api.log.list</field>
@@ -94,7 +132,7 @@
           <field name="executed_at"/>
           <field name="trigger_type"/>
           <field name="status"/>
-          <field name="execution_time"/>
+          <field name="response_data"/>
           <field name="error_message" optional="hide"/>
         </list>
       </field>

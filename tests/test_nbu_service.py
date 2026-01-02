@@ -3,8 +3,8 @@ from types import SimpleNamespace
 import pytest
 import responses
 
-import finance.services.nbu_service as nbu_service
-from finance.services.nbu_client import NBUClient
+import api_integration.services.nbu_service as nbu_service
+from api_integration.services.nbu_client import NBUClient
 
 
 class FakeCurrency:
@@ -56,11 +56,63 @@ class FakeRateModel:
 
 
 class FakeSysRateModel(FakeRateModel):
-    pass
+    def __init__(self):
+        super().__init__()
+        self._records = []
+
+    def search(self, domain, limit=1):
+        # Parse domain for sys rates
+        records = []
+        for rec in self._records:
+            match = True
+            for d in domain:
+                if d[0] == 'name' and d[1] == '>=':
+                    if rec.name < d[2]:
+                        match = False
+                        break
+                elif d[0] == 'name' and d[1] == '<=':
+                    if rec.name > d[2]:
+                        match = False
+                        break
+                elif d[0] == 'company_id' and d[1] == '=':
+                    if rec.company_id != d[2]:
+                        match = False
+                        break
+            if match:
+                records.append(rec)
+        return records
+
+    def create(self, vals_list):
+        if isinstance(vals_list, list):
+            for vals in vals_list:
+                rec = SimpleNamespace(**vals)
+                rec.currency_id = SimpleNamespace(id=vals.get('currency_id'))
+                rec.name = vals.get('name')
+                rec.rate = vals.get('rate')
+                rec.company_id = vals.get('company_id')
+                self.created.append(vals)
+                self._records.append(rec)
+        else:
+            rec = SimpleNamespace(**vals_list)
+            rec.currency_id = SimpleNamespace(id=vals_list.get('currency_id'))
+            rec.name = vals_list.get('name')
+            rec.rate = vals_list.get('rate')
+            rec.company_id = vals_list.get('company_id')
+            self.created.append(vals_list)
+            self._records.append(rec)
+        return rec
+
+
+class FakeCompany:
+    def __init__(self):
+        self.id = 1
+        self.currency_id = SimpleNamespace(name='UAH')
 
 
 class FakeEnv:
     def __init__(self):
+        self.company = FakeCompany()
+        self.user = None
         self['res.currency'] = FakeCurrencyModel()
         self['dino.currency.rate'] = FakeRateModel()
         self['res.currency.rate'] = FakeSysRateModel()
@@ -89,9 +141,16 @@ def test_import_nbu_rates_success():
     responses.add(responses.GET, url, json=body, status=200)
 
     result = nbu_service.import_nbu_rates(bank.env, bank, to_date='2023-01-01')
-    assert result['created'] == 2
-    assert result['updated'] == 0
-    assert result['skipped'] == 0
+    assert result['stats']['created'] == 2
+    assert result['stats']['updated'] == 0
+    assert result['stats']['skipped'] == 0
+
+    # Check that dino rates were created with rate_type='official'
+    dino_rates = bank.env['dino.currency.rate'].created
+    assert len(dino_rates) == 2
+    for rate in dino_rates:
+        assert rate['rate_type'] == 'official'
+        assert rate['source'] == 'nbu'
 
 
 @responses.activate
@@ -106,14 +165,28 @@ def test_import_nbu_rates_skip_uah():
     responses.add(responses.GET, url, json=body, status=200)
 
     result = nbu_service.import_nbu_rates(bank.env, bank, to_date='2023-01-01')
-    assert result['created'] == 1  # Only USD
-    assert result['skipped'] == 0  # UAH skipped before processing
+    assert result['stats']['created'] == 1  # Only USD
+    assert result['stats']['skipped'] == 0  # UAH skipped before processing
 
 
-def test_import_nbu_rates_wrong_mfo():
-    bank = FakeBank(mfo='123456')
-    with pytest.raises(Exception, match="Import from NBU is supported only for the National Bank"):
-        nbu_service.import_nbu_rates(bank.env, bank)
+# MFO check removed - NBU import doesn't require specific bank
+
+
+@responses.activate
+def test_run_sync():
+    bank = FakeBank()
+    url = "https://bank.gov.ua/NBU_Exchange/exchange_site?start=20230101&end=20230101&sort=exchangedate&order=asc&json"
+    body = [
+        {"cc": "USD", "rate": 36.5, "exchangedate": "01.01.2023"}
+    ]
+
+    responses.add(responses.GET, url, json=body, status=200)
+
+    result = nbu_service.run_sync(bank.env, bank)
+    assert result['stats']['created'] == 1
+    assert result['stats']['updated'] == 0
+    assert result['stats']['skipped'] == 0
+    assert 'sync_stats' in result
 
 
 def test_sync_to_system_rates():

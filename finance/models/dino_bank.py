@@ -162,7 +162,7 @@ class DinoBank(models.Model):
                     'message': _('MFO must be 6 characters long.')
                 }
             }
-        from ..services.nbu_client import NBUClient
+        from ...api_integration.services.nbu_client import NBUClient
         client = NBUClient()
         try:
             data = client.get_bank_info(mfo_str)
@@ -195,7 +195,7 @@ class DinoBank(models.Model):
     # Делегат: импорт курсов НБУ через сервис nbu_service
     def import_nbu_rates(self, to_date=None, overwrite=False, start_date=None):
         """Delegate to NBU service implementation."""
-        from ..services.nbu_service import import_nbu_rates as _import_nbu_rates
+        from ...api_integration.services.nbu_service import import_nbu_rates as _import_nbu_rates
         rec = self and self[0]
         return _import_nbu_rates(self.env, rec, to_date=to_date, overwrite=overwrite, start_date=start_date)
 
@@ -205,9 +205,33 @@ class DinoBank(models.Model):
     def button_sync(self):
         """
         Universal synchronization button.
+        Now calls specific services directly instead of dispatcher.
         """
-        from ..services import bank_dispatcher
-        return bank_dispatcher.dispatch_sync(self)
+        if self.mfo == '300001':  # NBU
+            from ...api_integration.services.nbu_service import run_sync
+            return run_sync(self.env, self)
+        elif self.mfo == '305299':  # Privat
+            from ...api_integration.services import privat_service
+            # Import accounts
+            import_result = privat_service.import_accounts(self)
+            # Import transactions
+            trans_result = privat_service.import_transactions(self)
+            # Return combined result
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Sync completed'),
+                    'message': f'Privat sync: accounts {import_result.get("stats", {})}, transactions {trans_result.get("stats", {})}',
+                    'sticky': False
+                }
+            }
+        else:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {'title': _('Not implemented'), 'message': f'Sync for MFO {self.mfo} not implemented', 'sticky': False}
+            }
 
     def button_import_and_sync(self, overwrite=False):
         """UI button wrapper to import and sync NBU rates and return a notification action.
@@ -218,12 +242,25 @@ class DinoBank(models.Model):
         self.ensure_one()
         _logger.info(f"Запуск button_import_and_sync для банка {self.name} (MFO: {self.mfo})")
         if self.mfo == '300001':
-            from ..services.nbu_service import run_sync
-            result = run_sync(self)
+            from ...api_integration.services.nbu_service import run_sync
+            result = run_sync(self.env, self)
         else:
-            # Для других банков (Privat) используем dispatcher
-            from ..services.bank_dispatcher import run_sync
-            result = run_sync(self)
+            # Для других банков (Privat) вызываем сервисы напрямую
+            from ...api_integration.services import privat_service
+            # Import accounts
+            import_result = privat_service.import_accounts(self)
+            # Import transactions
+            trans_result = privat_service.import_transactions(self)
+            # Return combined result as notification
+            result = {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': _('Import completed'),
+                    'message': f'Privat import: accounts {import_result.get("stats", {})}, transactions {trans_result.get("stats", {})}',
+                    'sticky': False
+                }
+            }
         _logger.info(f"Результат импорта: {result}")
         # Отправляем уведомление пользователю
         if result and 'stats' in result:

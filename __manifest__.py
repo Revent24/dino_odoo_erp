@@ -52,7 +52,7 @@
         'api_integration/views/dino_api_endpoint_views.xml',
         'core/views/menu.xml',
     ],
-    # assets removed: category sidebar feature was rolled back
+
     'application': True,
     'installable': True,
     

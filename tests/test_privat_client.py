@@ -1,6 +1,6 @@
 import json
 import responses
-from finance.services.privat_client import PrivatClient
+from api_integration.services.privat_client import PrivatClient
 
 BASE = "https://acp.privatbank.ua/api"
 

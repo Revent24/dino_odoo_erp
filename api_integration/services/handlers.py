@@ -49,19 +49,71 @@ class NbuRatesHandler(BaseApiHandler):
     required_auth_fields = []  # No auth required
 
     def execute(self):
-        # Import existing service
-        from ...finance.services.nbu_service import import_nbu_rates
+        progress = {
+            'steps': [],
+            'final': {}
+        }
+
+        def log_step(message):
+            timestamp = datetime.now().strftime('%H:%M:%S')
+            step_msg = f"{timestamp} - {message}"
+            progress['steps'].append(step_msg)
+            _logger.warning(f"NbuRatesHandler: {message}")
+            # Log intermediate step to database
+            self.endpoint._log_execution('info', {'step': step_msg}, 'progress')
+
+        log_step(">>> START EXECUTION")
+        log_step(f"Endpoint: '{self.endpoint.name}'")
 
         params = json.loads(self.endpoint.config_params or '{}')
-        result = import_nbu_rates(
-            self.env,
-            self.endpoint.bank_id,
-            start_date=params.get('start_date'),
-            end_date=params.get('end_date'),
-            overwrite=params.get('overwrite', False)
-        )
+        log_step(f"[CONFIG] Params loaded: {params}")
 
-        return self._standardize_result(result)
+        log_step("[STEP 1/2] Calling run_sync for import and sync")
+        from .nbu_service import run_sync
+        result = run_sync(self.env, None)
+        log_step("[STEP 1/2] run_sync completed")
+
+        log_step("[STEP 2/2] Processing result")
+        if isinstance(result, dict) and 'type' in result:
+            message = result.get('params', {}).get('message', '')
+            log_step(f"[RESULT] Message: '{message}'")
+            import_stats = {'created': 0, 'updated': 0, 'sync_created': 0, 'sync_updated': 0}
+
+            if 'Создано' in message and 'Обновлено' in message:
+                try:
+                    import_part = message.split('НБУ Импорт:')[1].split('. Системные')[0]
+                    sync_part = message.split('курсы:')[1]
+
+                    # Remove dots and extract numbers
+                    import_created_str = import_part.split('Создано')[1].split(',')[0].strip().rstrip('.')
+                    import_updated_str = import_part.split('Обновлено')[1].strip().rstrip('.')
+                    sync_created_str = sync_part.split('Создано')[1].split(',')[0].strip().rstrip('.')
+                    sync_updated_str = sync_part.split('Обновлено')[1].strip().rstrip('.')
+
+                    import_created = int(import_created_str) if import_created_str.isdigit() else 0
+                    import_updated = int(import_updated_str) if import_updated_str.isdigit() else 0
+                    sync_created = int(sync_created_str) if sync_created_str.isdigit() else 0
+                    sync_updated = int(sync_updated_str) if sync_updated_str.isdigit() else 0
+
+                    import_stats.update({
+                        'created': import_created,
+                        'updated': import_updated,
+                        'sync_created': sync_created,
+                        'sync_updated': sync_updated
+                    })
+                    log_step(f"[STATS] Import - Created:{import_created}, Updated:{import_updated}")
+                    log_step(f"[STATS] Sync - Created:{sync_created}, Updated:{sync_updated}")
+                except Exception as e:
+                    log_step(f"[ERROR] Failed to parse stats: {e}")
+
+            standardized = self._standardize_result({'stats': import_stats})
+        else:
+            log_step("[RESULT] Using result as-is")
+            standardized = self._standardize_result(result)
+
+        progress['final'] = standardized
+        log_step("<<< EXECUTION COMPLETE")
+        return progress
 
 
 class PrivatBalancesHandler(BaseApiHandler):
@@ -70,11 +122,11 @@ class PrivatBalancesHandler(BaseApiHandler):
 
     def execute(self):
         # Import existing service
-        from ...finance.services.privat_service import import_accounts
+        from .privat_service import import_accounts
 
         params = json.loads(self.endpoint.config_params or '{}')
         result = import_accounts(
-            self.endpoint.bank_id,
+            self.endpoint,
             startDate=params.get('date')
         )
 
@@ -87,11 +139,11 @@ class PrivatTransactionsHandler(BaseApiHandler):
 
     def execute(self):
         # Import existing service
-        from ...finance.services.privat_service import import_transactions
+        from .privat_service import import_transactions
 
         params = json.loads(self.endpoint.config_params or '{}')
         result = import_transactions(
-            self.endpoint.bank_id,
+            self.endpoint,
             startDate=params.get('start_date'),
             endDate=params.get('end_date')
         )

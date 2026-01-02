@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import finance.services.privat_service as privat_service
-from finance.services.privat_client import PrivatClient
+import api_integration.services.privat_service as privat_service
+from api_integration.services.privat_client import PrivatClient
 
 
 class FakeCurrency:

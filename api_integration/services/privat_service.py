@@ -4,6 +4,7 @@ from datetime import datetime
 from odoo import _, fields
 from odoo.exceptions import UserError
 from .privat_client import PrivatClient
+from .nbu_service import import_rates_to_dino
 
 _logger = logging.getLogger(__name__)
 
@@ -23,16 +24,19 @@ def _parse_privat_date(date_str, time_str=None):
         except:
             return False
 
-def get_client(bank):
+def get_client(endpoint):
     """Фабрика для создания клиента"""
-    if not bank.api_key:
-        raise UserError(_("Не указан токен API для банка %s") % bank.name)
-    return PrivatClient(api_key=bank.api_key, client_id=bank.api_client_id)
+    if not endpoint.auth_token:
+        raise UserError(_("Not specified API token for endpoint %s") % endpoint.name)
+    return PrivatClient(api_key=endpoint.auth_token, client_id=endpoint.auth_api_key)
 
 
-def import_accounts(bank, startDate=None, endDate=None):
+def import_accounts(endpoint, startDate=None, endDate=None):
     """Импорт и обновление балансов."""
-    client = get_client(bank)
+    bank = endpoint.bank_id
+    if not bank:
+        raise UserError(_("Bank not specified for endpoint %s") % endpoint.name)
+    client = get_client(endpoint)
     
     # Дата по умолчанию - сегодня
     target_date = startDate or fields.Date.today().strftime('%d-%m-%Y')
@@ -97,21 +101,25 @@ def import_accounts(bank, startDate=None, endDate=None):
     return {'stats': stats, 'accounts': BankAccount.browse(processed_ids)}
 
 
-def import_transactions(bank, startDate=None, endDate=None):
+def import_transactions(endpoint, startDate=None, endDate=None):
     """
     Массовый импорт транзакций по всем счетам сразу (без параметра acc).
     """
-    client = get_client(bank)
+    bank = endpoint.bank_id
+    if not bank:
+        raise UserError(_("Bank not specified for endpoint %s") % endpoint.name)
+    
+    client = get_client(endpoint)
     TransModel = bank.env['dino.bank.transaction']
     AccountModel = bank.env['dino.bank.account']
 
     # 1. Даты
     if startDate:
         s_date_val = fields.Date.to_date(startDate)
-    elif bank.start_sync_date:
-        s_date_val = bank.start_sync_date
+    elif endpoint.start_date:
+        s_date_val = endpoint.start_date
     else:
-        raise UserError(_("Для банка '%s' не указана Start Date.") % bank.name)
+        raise UserError(_("Start Date not specified for endpoint '%s'.") % endpoint.name)
 
     s_date_api = s_date_val.strftime('%d-%m-%Y')
     e_date_api = fields.Date.to_date(endDate).strftime('%d-%m-%Y') if endDate else None
@@ -240,7 +248,91 @@ def import_transactions(bank, startDate=None, endDate=None):
         _logger.info(f"   Статистика пачки: создано {batch_created}, дубли {batch_skipped}, неизвестные счета {batch_unknown}")
 
     _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, дубли {total_skipped}, неизвестные счета {unknown_acc_count}")
-    
+
     return {
         'stats': {'created': total_created, 'skipped': total_skipped, 'unknown_accounts': unknown_acc_count}
     }
+
+
+def import_privat_rates(bank, overwrite=True):
+    """
+    Импорт курсов покупки и продажи Приватбанка.
+    Выполняется 3-4 раза в день с перезаписью курсов на текущую дату.
+    """
+    _logger.info("import_privat_rates: Starting PrivatBank exchange rates import")
+
+    client = get_client(bank)
+
+    try:
+        data = client.fetch_exchange()
+        _logger.info(f"import_privat_rates: Received {len(data) if data else 0} exchange rates")
+    except Exception as e:
+        _logger.error(f"import_privat_rates: Error fetching exchange rates: {e}")
+        raise UserError(_("Ошибка получения курсов Приватбанка: %s") % e)
+
+    if not data:
+        _logger.warning("import_privat_rates: No exchange data received")
+        return {'stats': {'created': 0, 'updated': 0, 'skipped': 0}}
+
+    # Текущая дата для всех курсов (перезапись на текущий день)
+    today = fields.Date.today()
+
+    buy_rates_data = []
+    sell_rates_data = []
+
+    for item in data:
+        ccy = item.get('ccy')  # базовая валюта (USD, EUR)
+        base_ccy = item.get('base_ccy')  # валюта котировки (UAH)
+
+        if base_ccy != 'UAH':
+            continue  # Только курсы к UAH
+
+        buy_rate = item.get('buy')
+        sale_rate = item.get('sale')
+
+        if not ccy or not buy_rate or not sale_rate:
+            continue
+
+        try:
+            buy_val = float(buy_rate)
+            sale_val = float(sale_rate)
+        except (ValueError, TypeError):
+            continue
+
+        # Добавляем курс покупки
+        buy_rates_data.append({
+            'currency_code': ccy,
+            'rate': buy_val,
+            'date': today
+        })
+
+        # Добавляем курс продажи
+        sell_rates_data.append({
+            'currency_code': ccy,
+            'rate': sale_val,
+            'date': today
+        })
+
+    if not buy_rates_data and not sell_rates_data:
+        _logger.warning("import_privat_rates: No valid rates to import")
+        return {'stats': {'created': 0, 'updated': 0, 'skipped': 0}}
+
+    # Импорт buy курсов
+    buy_result = import_rates_to_dino(bank.env, buy_rates_data, 'privat', 'buy', overwrite)
+
+    # Импорт sell курсов
+    sell_result = import_rates_to_dino(bank.env, sell_rates_data, 'privat', 'sell', overwrite)
+
+    # Объединяем результаты
+    total_stats = {
+        'buy_created': buy_result['stats']['created'],
+        'buy_updated': buy_result['stats']['updated'],
+        'buy_skipped': buy_result['stats']['skipped'],
+        'sell_created': sell_result['stats']['created'],
+        'sell_updated': sell_result['stats']['updated'],
+        'sell_skipped': sell_result['stats']['skipped']
+    }
+
+    _logger.info(f"import_privat_rates: Import completed - Buy: {buy_result['stats']}, Sell: {sell_result['stats']}")
+
+    return {'stats': total_stats}

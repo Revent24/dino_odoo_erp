@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Cron will be created programmatically after module installation -->
+    <!-- Cron will be activated later when scheduled runs are needed -->
   </data>
 </odoo>
