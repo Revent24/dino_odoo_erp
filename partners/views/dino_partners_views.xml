@@ -44,6 +44,10 @@
                             name="action_view_partner_nomenclature">
                         <field name="partner_nomenclature_count" widget="statinfo" string="Nomenclature"/>
                     </button>
+                    <button class="oe_stat_button" icon="fa-credit-card" type="object"
+                            name="action_view_transactions">
+                        <field name="transaction_count" widget="statinfo" string="Transactions"/>
+                    </button>
                 </div>
                     <group>
                         <group string="MAIN INFO">
@@ -56,6 +60,11 @@
                             <field name="tax_system_id" options="{'no_create': True, 'no_open': False}"/>
                             <field name="vat_rate" readonly="1"/>
                             <field name="category_id" string="Vendor Category" options="{'no_create': True, 'no_open': False}" domain="[('origin_type', '!=', 'production')]" invisible="1 not in tag_ids"/>
+                        </group>
+                        <group string="Bank Info">
+                            <field name="iban"/>
+                            <field name="bank_name"/>
+                            <field name="bank_city"/>
                         </group>
                         
 

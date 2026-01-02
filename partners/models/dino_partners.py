@@ -18,6 +18,9 @@ class DinoPartner(models.Model):
     full_name = fields.Char(string='Full Name', translate=True)
     name_short = fields.Char(string='Short Name', translate=True)
     egrpou = fields.Char(string='EGRPOU', index=True)
+    iban = fields.Char(string='IBAN', help='Bank account number (IBAN)')
+    bank_name = fields.Char(string='Bank Name', help='Name of the bank')
+    bank_city = fields.Char(string='Bank City', help='City of the bank')
     address = fields.Char(string='Address', translate=True)
     director = fields.Char(string='Director', translate=True)
     director_gen = fields.Char(string='Director (Gen)', translate=True)
@@ -43,6 +46,9 @@ class DinoPartner(models.Model):
 
     document_ids = fields.One2many('dino.operation.document', 'partner_id', string='Documents')
     document_count = fields.Integer(string='Number of Documents', compute='_compute_document_count')
+
+    transaction_ids = fields.One2many('dino.bank.transaction', 'partner_id', string='Bank Transactions')
+    transaction_count = fields.Integer(string='Number of Transactions', compute='_compute_transaction_count')
 
     def _compute_partner_nomenclature_count(self):
         for rec in self:
@@ -80,6 +86,21 @@ class DinoPartner(models.Model):
     def _compute_document_count(self):
         for rec in self:
             rec.document_count = self.env['dino.operation.document'].search_count([('partner_id', '=', rec.id)])
+
+    def _compute_transaction_count(self):
+        for rec in self:
+            rec.transaction_count = self.env['dino.bank.transaction'].search_count([('partner_id', '=', rec.id)])
+
+    def action_view_transactions(self):
+        self.ensure_one()
+        return {
+            'name': 'Bank Transactions',
+            'type': 'ir.actions.act_window',
+            'res_model': 'dino.bank.transaction',
+            'view_mode': 'list,form',
+            'domain': [('partner_id', '=', self.id)],
+            'context': {'default_partner_id': self.id},
+        }
 
     def action_view_documents(self):
         self.ensure_one()
@@ -130,7 +151,9 @@ class DinoPartner(models.Model):
         if not okpo:
             return
         try:
-            vals = self._fetch_registry_vals(okpo)
+            # Use service from api_integration
+            from odoo.addons.dino_erp.api_integration.services.partners_service import fetch_partner_registry_data
+            vals = fetch_partner_registry_data(okpo)
         except Exception:
             logging.getLogger(__name__).exception('Error fetching registry on onchange for %s', okpo)
             return
@@ -182,100 +205,20 @@ class DinoPartner(models.Model):
         Can be called for a recordset. Uses external API
         `https://adm.tools/action/gov/api/?egrpou=<egrpou>` and parses XML response.
         """
-        # Use helper `_fetch_registry_vals` for each record and write results.
+        # Use service from api_integration
+        from odoo.addons.dino_erp.api_integration.services.partners_service import fetch_partner_registry_data
+        
         for rec in self:
             okpo = (rec.egrpou or '').strip()
             if not okpo:
                 logging.getLogger(__name__).debug('No EGRPOU for partner %s (%s), skip', rec.id, rec.name)
                 continue
             try:
-                vals = self._fetch_registry_vals(okpo)
+                vals = fetch_partner_registry_data(okpo)
                 if vals:
                     rec.write(vals)
             except Exception:
                 logging.getLogger(__name__).exception('Failed to update partner %s from registry', rec.id)
-
-    @api.model
-    def _fetch_registry_vals(self, okpo):
-        """Fetch registry data for a single EGRPOU and return a dict of vals (do not write).
-
-        Returns False or empty dict on failure.
-        """
-        _logger = logging.getLogger(__name__)
-        okpo = (okpo or '').strip()
-        if not okpo:
-            return {}
-        url = 'https://adm.tools/action/gov/api/?egrpou=%s' % okpo
-        try:
-            resp = requests.get(url, timeout=10)
-            resp.raise_for_status()
-        except Exception as ex:
-            _logger.exception('Failed to fetch registry for %s: %s', okpo, ex)
-            return {}
-
-        content = resp.content
-        # Try to detect encoding from XML declaration
-        m = re.search(br'encoding=["\']([^"\']+)["\']', content[:200])
-        enc = (m.group(1).decode('ascii') if m else 'windows-1251')
-        try:
-            text = content.decode(enc, errors='replace')
-        except Exception:
-            try:
-                text = content.decode('windows-1251', errors='replace')
-            except Exception:
-                _logger.exception('Cannot decode response for %s', okpo)
-                return {}
-
-        # Parse XML
-        try:
-            import xml.etree.ElementTree as ET
-            root = ET.fromstring(text)
-        except Exception as ex:
-            _logger.exception('Failed to parse XML for %s: %s', okpo, ex)
-            return {}
-
-        company = None
-        if root.tag.lower() == 'export':
-            company = root.find('company')
-        elif root.tag.lower() == 'company':
-            company = root
-
-        if company is None:
-            _logger.debug('No company element in registry response for %s', okpo)
-            return {}
-
-        vals = {}
-        def _att(name):
-            v = company.get(name)
-            return v if v is not None else False
-
-        vals['full_name'] = _att('name') or False
-        vals['name_short'] = _att('name_short') or False
-        vals['name'] = vals.get('name_short') or vals.get('full_name') or False
-        vals['address'] = _att('address') or False
-        vals['director'] = _att('director') or False
-        vals['director_gen'] = _att('director_gen') or False
-        vals['kved'] = _att('kved') or False
-        vals['kved_number'] = _att('kved_number') or False
-        vals['inn'] = _att('inn') or False
-        vals['egrpou'] = _att('egrpou') or okpo
-
-        # Dates
-        df = self._parse_date_str(_att('date_from'))
-        if df:
-            vals['date_from'] = df
-        dt = self._parse_date_str(_att('date_to'))
-        if dt:
-            vals['date_to'] = dt
-        idt = self._parse_date_str(_att('inn_date'))
-        if idt:
-            vals['inn_date'] = idt
-        lu = self._parse_date_str(_att('last_update'))
-        if lu:
-            vals['last_update'] = lu
-
-        # Remove false values so write won't override existing fields with False
-        return {k: v for k, v in vals.items() if v}
 
     @api.model
     def create(self, vals):

@@ -21,6 +21,7 @@ class DinoBankTransaction(models.Model):
     balance_after = fields.Monetary(string=_('Balance After'), currency_field='currency_id')
 
     # Counterparty Details
+    partner_id = fields.Many2one('dino.partner', string=_('Counterparty'), index=True, help=_('Linked partner (counterparty)'))
     counterparty_name = fields.Char(string=_('Counterparty Name'))
     counterparty_iban = fields.Char(string=_('Counterparty IBAN'))
     counterparty_edrpou = fields.Char(string=_('Counterparty EDRPOU'))
@@ -45,6 +46,68 @@ class DinoBankTransaction(models.Model):
         for trx in self:
             trx.debit = -trx.amount if trx.amount < 0 else 0.0
             trx.credit = trx.amount if trx.amount > 0 else 0.0
+
+    @api.model
+    def _find_or_create_partner(self, edrpou, name=None, iban=None, bank_name=None, bank_city=None):
+        """
+        Find or create partner by EDRPOU and update fields from transaction data.
+        
+        :param edrpou: Counterparty EDRPOU
+        :param name: Counterparty name
+        :param iban: Counterparty IBAN
+        :param bank_name: Bank name
+        :param bank_city: Bank city
+        :return: dino.partner record or False
+        """
+        if not edrpou:
+            return False
+        
+        Partner = self.env['dino.partner']
+        
+        # Search for existing partner by EDRPOU
+        partner = Partner.search([('egrpou', '=', edrpou)], limit=1)
+        
+        if partner:
+            # Update fields if they are empty
+            vals = {}
+            if iban and not partner.iban:
+                vals['iban'] = iban
+            if bank_name and not partner.bank_name:
+                vals['bank_name'] = bank_name
+            if bank_city and not partner.bank_city:
+                vals['bank_city'] = bank_city
+            if vals:
+                partner.write(vals)
+        else:
+            # Create new partner
+            vals = {
+                'name': name or f'Partner {edrpou}',
+                'egrpou': edrpou,
+                'iban': iban,
+                'bank_name': bank_name,
+                'bank_city': bank_city,
+            }
+            partner = Partner.create(vals)
+        
+        return partner
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Override create to automatically link partner by EDRPOU"""
+        # Auto-link partner if EDRPOU is provided
+        for vals in vals_list:
+            if vals.get('counterparty_edrpou') and not vals.get('partner_id'):
+                partner = self._find_or_create_partner(
+                    edrpou=vals.get('counterparty_edrpou'),
+                    name=vals.get('counterparty_name'),
+                    iban=vals.get('counterparty_iban'),
+                    bank_name=vals.get('counterparty_bank_name'),
+                    bank_city=vals.get('counterparty_bank_city')
+                )
+                if partner:
+                    vals['partner_id'] = partner.id
+        
+        return super(DinoBankTransaction, self).create(vals_list)
 
     @api.model
     def create_from_api(self, bank_account, payload):

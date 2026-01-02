@@ -34,7 +34,8 @@ class BaseApiHandler:
                     'created': stats.get('created', 0),
                     'updated': stats.get('updated', 0),
                     'skipped': stats.get('skipped', 0),
-                    'inactive_accounts': stats.get('inactive_accounts', 0)
+                    'inactive_accounts': stats.get('inactive_accounts', 0),
+                    'errors': stats.get('errors', 0)
                 },
                 'metadata': {
                     'operation': self.endpoint.operation_type,
@@ -177,8 +178,15 @@ class MonoTransactionsHandler(BaseApiHandler):
 
 
 class PartnersUpdateHandler(BaseApiHandler):
+    """Handler for updating partners from registry"""
     required_auth_fields = []  # No auth required
 
     def execute(self):
-        # TODO: Implement partners update
-        return {'status': 'success', 'data': {'message': 'Not implemented yet'}}
+        from .partners_service import update_partners_from_registry
+        
+        # Get partner IDs from config if specified
+        params = json.loads(self.endpoint.config_params or '{}')
+        partner_ids = params.get('partner_ids')  # Optional: specific partners
+        
+        result = update_partners_from_registry(self.env, partner_ids)
+        return self._standardize_result(result)
