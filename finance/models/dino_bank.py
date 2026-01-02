@@ -44,41 +44,8 @@ class DinoBank(models.Model):
     mfo = fields.Char(string=_('MFO'), size=6, index=True)
     edrpou = fields.Char(string=_('EDRPOU'), index=True)
 
-    # --- API Credentials ---
-    api_client_id = fields.Char(string=_('API Client ID'))
-    # Use Text to allow arbitrarily long API tokens; remove password widget for now
-    api_key = fields.Text(string=_('API Key / Token'), encrypted=True)
-
     # Common fields
     active = fields.Boolean(string=_('Active'), default=True)
-
-    # Информация об обновлениях/синхронизации
-    last_sync_date = fields.Datetime(string=_('Last sync'))
-    start_sync_date = fields.Date(string=_('Start Date'))
-    cron_overwrite_existing_rates = fields.Boolean(
-        string=_('Overwrite Existing'), default=False,
-        help="If true, scheduled imports will overwrite existing notes.")
-
-    # Per-bank cron configuration (displayed on API tab)
-    cron_enable = fields.Boolean(
-        string=_('Enable Cron'), default=False,
-        help="If true, a per-bank scheduled job can be configured (informational only).")
-    cron_interval_number = fields.Integer(
-        string=_('Interval Number'), default=1,
-        help="Interval count for the scheduled job (e.g., 1 day).")
-    cron_interval_type = fields.Selection([
-        ('minutes', _('Minutes')),
-        ('hours', _('Hours')),
-        ('days', _('Days')),
-        ('weeks', _('Weeks')),
-        ('months', _('Months')),
-    ], string=_('Interval Type'), default='days')
-    cron_nextcall = fields.Datetime(string=_('Next Call'), help="Date/time for the next scheduled run.")
-    cron_numbercall = fields.Integer(string=_('Max Calls'), default=-1, help='Maximum number of calls (-1 = unlimited).')
-    # Время дня в часах (float, например 3.5 = 03:30). Для UI использовать виджет float_time.
-    cron_time_of_day_hours = fields.Float(
-        string=_('Time of Day (hours)'),
-        help="Optional. Time of day for daily/weekly runs as decimal hours (e.g., 3.5 = 03:30).")
 
     # Smart button / indicators
     account_count = fields.Integer(string=_('Accounts'), compute='_compute_account_count')
@@ -96,55 +63,12 @@ class DinoBank(models.Model):
             'res_model': 'dino.bank.account',
             'view_mode': 'list,form',
             'domain': [('bank_id', '=', self.id)],
-            'context': {'default_bank_id': self.id},
+            'context': {'default_bank_id': self.id, 'active_test': False},
         }
 
     # ------------------------------------------------------------------
     # РАЗДЕЛ: Ограничения и обработчики onchange
     # ------------------------------------------------------------------
-    # Проверка целостности: cron_interval_number должно быть положительным
-    @api.constrains('cron_interval_number')
-    def _check_cron_interval_number(self):
-        """Validate that cron interval number is positive."""
-        for rec in self:
-            if rec.cron_interval_number is None:
-                continue
-            if rec.cron_interval_number <= 0:
-                raise UserError(_('Cron Interval Number must be a positive integer.'))
-
-    # Проверка целостности: cron_time_of_day_hours должно быть пустым или в диапазоне 0.0–23.99
-    @api.constrains('cron_time_of_day_hours')
-    def _check_cron_time_hours_range(self):
-        """Validate cron_time_of_day_hours is either empty or 0 <= value < 24."""
-        for rec in self:
-            if rec.cron_time_of_day_hours is None:
-                continue
-            try:
-                val = float(rec.cron_time_of_day_hours)
-            except Exception:
-                raise UserError(_('Cron Time of Day must be a number representing hours (e.g., 3.5 = 03:30).'))
-            if not (0 <= val < 24):
-                raise UserError(_('Cron Time of Day must be between 0.0 and 23.99 hours.'))
-
-    # Onchange: при смене типа интервала очищаем поле времени дня для minute/hours
-    @api.onchange('cron_interval_type')
-    def _onchange_cron_interval_type(self):
-        """Clear time-of-day when interval is minutes/hours since it's irrelevant then."""
-        for rec in self:
-            try:
-                if rec.cron_interval_type in ('minutes', 'hours') and rec.cron_time_of_day_hours:
-                    rec.cron_time_of_day_hours = False
-                    return {
-                        'warning': {
-                            'title': _('Cron Time cleared'),
-                            'message': _('Time of Day is ignored for minute/hour intervals and was cleared.')
-                        }
-                    }
-            except Exception:
-                # do not block saving on unexpected errors
-                _logger.exception('Error in onchange_cron_interval_type for bank %s', getattr(rec, 'id', 'unknown'))
-        return {}
-
     # Onchange: при изменении MFO выполняем lookup в справочнике НБУ и заполняем name/edrpou
     @api.onchange('mfo')
     def _onchange_mfo(self):
@@ -190,91 +114,7 @@ class DinoBank(models.Model):
             }
 
     # ------------------------------------------------------------------
-    # РАЗДЕЛ: Высокоуровневые делегаты импорта/синхронизации НБУ (использовать services)
-    # ------------------------------------------------------------------
-    # Делегат: импорт курсов НБУ через сервис nbu_service
-    def import_nbu_rates(self, to_date=None, overwrite=False, start_date=None):
-        """Delegate to NBU service implementation."""
-        from ...api_integration.services.nbu_service import import_nbu_rates as _import_nbu_rates
-        rec = self and self[0]
-        return _import_nbu_rates(self.env, rec, to_date=to_date, overwrite=overwrite, start_date=start_date)
-
-    # ------------------------------------------------------------------
     # РАЗДЕЛ: UI-обработчики (кнопки)
     # ------------------------------------------------------------------
-    def button_sync(self):
-        """
-        Universal synchronization button.
-        Now calls specific services directly instead of dispatcher.
-        """
-        if self.mfo == '300001':  # NBU
-            from ...api_integration.services.nbu_service import run_sync
-            return run_sync(self.env, self)
-        elif self.mfo == '305299':  # Privat
-            from ...api_integration.services import privat_service
-            # Import accounts
-            import_result = privat_service.import_accounts(self)
-            # Import transactions
-            trans_result = privat_service.import_transactions(self)
-            # Return combined result
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Sync completed'),
-                    'message': f'Privat sync: accounts {import_result.get("stats", {})}, transactions {trans_result.get("stats", {})}',
-                    'sticky': False
-                }
-            }
-        else:
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {'title': _('Not implemented'), 'message': f'Sync for MFO {self.mfo} not implemented', 'sticky': False}
-            }
-
-    def button_import_and_sync(self, overwrite=False):
-        """UI button wrapper to import and sync NBU rates and return a notification action.
-
-        This method keeps compatibility with older code paths that expect
-        `button_import_and_sync` to exist on the `dino.bank` model.
-        """
-        self.ensure_one()
-        _logger.info(f"Запуск button_import_and_sync для банка {self.name} (MFO: {self.mfo})")
-        if self.mfo == '300001':
-            from ...api_integration.services.nbu_service import run_sync
-            result = run_sync(self.env, self)
-        else:
-            # Для других банков (Privat) вызываем сервисы напрямую
-            from ...api_integration.services import privat_service
-            # Import accounts
-            import_result = privat_service.import_accounts(self)
-            # Import transactions
-            trans_result = privat_service.import_transactions(self)
-            # Return combined result as notification
-            result = {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': _('Import completed'),
-                    'message': f'Privat import: accounts {import_result.get("stats", {})}, transactions {trans_result.get("stats", {})}',
-                    'sticky': False
-                }
-            }
-        _logger.info(f"Результат импорта: {result}")
-        # Отправляем уведомление пользователю
-        if result and 'stats' in result:
-            stats = result['stats']
-            message = f"Импорт завершен: создано {stats.get('created', 0)}, пропущено {stats.get('skipped', 0)}"
-            if 'unknown_accounts' in stats:
-                message += f", неизвестные счета {stats['unknown_accounts']}"
-            self.env['bus.bus'].sendone(
-                f'notify_{self.env.user.id}',
-                {
-                    'type': 'simple_notification',
-                    'title': 'Импорт транзакций',
-                    'message': message,
-                    'sticky': False,
-                }
-            )
-        return result
+    # All sync operations now handled through API endpoints
+    # Old button_sync and button_import_and_sync methods removed

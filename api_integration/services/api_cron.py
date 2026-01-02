@@ -12,13 +12,7 @@ class DinoApiCron(models.Model):
     # ------------------------------------------------------------------
     # РАЗДЕЛ: Оркестрация / Точки входа планировщика (cron)
     # ------------------------------------------------------------------
-    # Оркестрационная точка входа: запуск fetch для банка; для НБУ делегирует импорт/синхронизацию
-    def run_api_endpoint(self):
-        """Run the API endpoint"""
-        _logger.info('Running API endpoint %s (%s)', self.id, self.name)
-        self.run_endpoint(trigger_type='cron')
-        return True
-
+    
     def _advance_next_run(self):
         """Advance next_run by updating last_sync_date, which triggers recompute of next_run."""
         for rec in self:
@@ -29,24 +23,31 @@ class DinoApiCron(models.Model):
         """Cron entrypoint: check per-endpoint `cron_active` and `next_run`, run endpoint when due and advance `next_run` accordingly."""
         # consider only active endpoints which have cron enabled
         endpoints = self.search([('active', '=', True), ('cron_active', '=', True)])
-        now = datetime.utcnow()
+        now = fields.Datetime.now()
+        _logger.info(f'Cron check: found {len(endpoints)} active endpoints with cron enabled')
+        
         for ep in endpoints:
             try:
                 # If no next_run is set, skip
                 if not ep.next_run:
-                    _logger.debug('Skipping endpoint %s: next_run not set', ep.id)
+                    _logger.debug(f'Skipping endpoint {ep.name} (ID: {ep.id}): next_run not set')
                     continue
-                try:
-                    nr = fields.Datetime.from_string(ep.next_run)
-                except Exception:
-                    _logger.warning('Invalid next_run for endpoint %s: %s', ep.id, ep.next_run)
-                    continue
-                if nr <= now:
+                
+                # Compare times
+                _logger.debug(f'Endpoint {ep.name}: next_run={ep.next_run}, now={now}')
+                if ep.next_run <= now:
+                    _logger.info(f'Running scheduled endpoint: {ep.name} (ID: {ep.id})')
                     try:
-                        ep.run_api_endpoint()
-                        # after successful run, advance next_run
+                        # Mark as running
+                        ep.write({'cron_running': True})
+                        # Run endpoint with cron trigger
+                        ep.run_endpoint(trigger_type='cron')
+                        # After successful run, advance next_run
                         ep._advance_next_run()
+                        _logger.info(f'Successfully completed endpoint: {ep.name}')
                     except Exception:
-                        _logger.exception('Failed to run endpoint %s', ep.id)
+                        _logger.exception(f'Failed to run endpoint {ep.name} (ID: {ep.id})')
+                else:
+                    _logger.debug(f'Endpoint {ep.name} not due yet (next_run: {ep.next_run})')
             except Exception:
-                _logger.exception('Unexpected error in cron_run_endpoints for endpoint %s', ep.id)
+                _logger.exception(f'Unexpected error in cron_run_endpoints for endpoint {ep.name} (ID: {ep.id})')

@@ -34,7 +34,7 @@ class BaseApiHandler:
                     'created': stats.get('created', 0),
                     'updated': stats.get('updated', 0),
                     'skipped': stats.get('skipped', 0),
-                    'errors': stats.get('unknown_accounts', 0)
+                    'inactive_accounts': stats.get('inactive_accounts', 0)
                 },
                 'metadata': {
                     'operation': self.endpoint.operation_type,

@@ -26,9 +26,9 @@
         <form string="API Endpoint">
           <header>
             <button name="action_activate" type="object" string="Activate" class="btn-success" invisible="active"/>
-            <button name="action_deactivate" type="object" string="Deactivate" class="btn-warning" invisible="not active or cron_running"/>
-            <button name="run_endpoint" type="object" string="Run Now" class="btn-primary" invisible="not active or cron_running"/>
-            <button name="action_stop" type="object" string="Stop" class="btn-danger" invisible="not active or not cron_running"/>
+            <button name="action_edit" type="object" string="Edit" class="btn-warning" invisible="not active or cron_running"/>
+            <button name="action_run" type="object" string="Run Now" class="btn-primary" invisible="not active or cron_running"/>
+            <button name="action_stop" type="object" string="Stop" class="btn-danger" invisible="not cron_running"/>
           </header>
           <sheet>
             <div class="oe_title">
@@ -51,13 +51,17 @@
             <notebook readonly="active">
               <page string="Authentication" invisible="not show_token and not show_api_key">
                 <group>
-                  <field name="bank_id" invisible="not show_bank" readonly="active" 
-                       domain="['|', '|', 
-                                ('mfo', '=', '322001' if operation_type in ['mono_client_info', 'mono_rates', 'mono_transactions'] else '305299'),
-                                ('mfo', '=', '305299' if operation_type in ['privat_balances', 'privat_transactions'] else '322001'),
-                                ('mfo', '=', False)]"/>
-                  <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
-                  <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
+                  <group>
+                    <field name="bank_id" invisible="not show_bank" readonly="active" 
+                        domain="['|', '|', 
+                                  ('mfo', '=', '322001' if operation_type in ['mono_client_info', 'mono_rates', 'mono_transactions'] else '305299'),
+                                  ('mfo', '=', '305299' if operation_type in ['privat_balances', 'privat_transactions'] else '322001'),
+                                  ('mfo', '=', False)]"/>
+                    <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
+                    <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
+                  </group>
+                  <group>
+                  </group>
                 </group>
               </page>
 

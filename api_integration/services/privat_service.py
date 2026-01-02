@@ -69,8 +69,12 @@ def import_accounts(endpoint, startDate=None, endDate=None):
             stats['skipped'] += 1
             continue
 
-        # Парсим дату обновления баланса
-        balance_date = _parse_privat_date(data.get('dpd', '').split(' ')[0])
+        # Парсим дату обновления баланса (dpd - дата последнего движения)
+        dpd_str = data.get('dpd', '')
+        if dpd_str and ' ' in dpd_str:
+            balance_date = _parse_privat_date(dpd_str.split(' ')[0])
+        else:
+            balance_date = fields.Date.today()
 
         vals = {
             'name': data.get('nameACC') or acc_num,
@@ -79,7 +83,11 @@ def import_accounts(endpoint, startDate=None, endDate=None):
             'account_number': acc_num,
             'balance': float(data.get('balanceOut', 0)),
             'balance_start': float(data.get('balanceIn', 0)),
+            'turnover_debit': float(data.get('turnoverDebt', 0)),
+            'turnover_credit': float(data.get('turnoverCred', 0)),
+            'balance_end_date': balance_date,
             'external_id': data.get('acc'), # Внутренний ID привата, полезен для транзакций
+            'last_import_date': fields.Datetime.now(),
             'active': True
         }
 
@@ -127,7 +135,11 @@ def import_transactions(endpoint, startDate=None, endDate=None):
     # 2. Подготовка карты счетов (Mapping)
     # Нам нужно быстро находить ID счета в Odoo по номеру из JSON (AUT_MY_ACC)
     # Приват может прислать в AUT_MY_ACC как IBAN, так и внутренний номер.
-    local_accounts = AccountModel.search([('bank_id', '=', bank.id)])
+    # Импортируем транзакции только по активным счетам
+    local_accounts = AccountModel.search([
+        ('bank_id', '=', bank.id),
+        ('active', '=', True)
+    ])
     acc_map = {}
     
     for acc in local_accounts:
@@ -139,9 +151,9 @@ def import_transactions(endpoint, startDate=None, endDate=None):
             acc_map[acc.external_id] = acc
 
     if not acc_map:
-         raise UserError(_("Не найдено ни одного счета для банка %s") % bank.name)
+         raise UserError(_("Не найдено активных счетов для банка %s") % bank.name)
 
-    _logger.info(f"Запуск массового импорта транзакций с {s_date_api}")
+    _logger.info(f"Запуск импорта транзакций с {s_date_api} для {len(local_accounts)} активных счетов")
 
     # 3. Запрос к API без указания конкретного счета (account_num=None)
     # Клиент будет листать страницы, пока они не закончатся
@@ -153,7 +165,7 @@ def import_transactions(endpoint, startDate=None, endDate=None):
 
     total_created = 0
     total_skipped = 0
-    unknown_acc_count = 0
+    inactive_acc_count = 0
     total_processed = 0
 
     page_count = 0
@@ -205,9 +217,9 @@ def import_transactions(endpoint, startDate=None, endDate=None):
                 if alt_acc_num:
                     account = acc_map.get(alt_acc_num)
                 if not account:
-                    _logger.warning(f"Не найден счет для транзакции {ext_id}: AUT_MY_ACC={my_acc_num}, AUT_MY_IBAN={alt_acc_num}")
+                    _logger.debug(f"Пропущена транзакция {ext_id} по неактивному/отсутствующему счету: AUT_MY_ACC={my_acc_num}")
                     batch_unknown += 1
-                    unknown_acc_count += 1
+                    inactive_acc_count += 1
                     continue
 
             # Логика знака (D - расход, C - приход)
@@ -245,12 +257,12 @@ def import_transactions(endpoint, startDate=None, endDate=None):
             _logger.info("   Нет новых транзакций для импорта в этой пачке")
 
         total_skipped += batch_skipped
-        _logger.info(f"   Статистика пачки: создано {batch_created}, дубли {batch_skipped}, неизвестные счета {batch_unknown}")
+        _logger.info(f"   Статистика пачки: создано {batch_created}, дубли {batch_skipped}, неактивные счета {batch_unknown}")
 
-    _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, дубли {total_skipped}, неизвестные счета {unknown_acc_count}")
+    _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, дубли {total_skipped}, неактивные счета {inactive_acc_count}")
 
     return {
-        'stats': {'created': total_created, 'skipped': total_skipped, 'unknown_accounts': unknown_acc_count}
+        'stats': {'created': total_created, 'skipped': total_skipped, 'inactive_accounts': inactive_acc_count}
     }
 
 

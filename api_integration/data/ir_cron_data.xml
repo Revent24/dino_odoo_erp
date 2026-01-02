@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Cron will be activated later when scheduled runs are needed -->
+    <!-- Главный крон для запуска API эндпоинтов -->
+    <record id="ir_cron_run_api_endpoints" model="ir.cron">
+      <field name="name">API Endpoints: Run Scheduled Tasks</field>
+      <field name="model_id" ref="model_dino_api_endpoint"/>
+      <field name="state">code</field>
+      <field name="code">model.cron_run_endpoints()</field>
+      <field name="interval_number">1</field>
+      <field name="interval_type">minutes</field>
+      <field name="numbercall">-1</field>
+      <field name="active" eval="True"/>
+      <field name="doall" eval="False"/>
+    </record>
   </data>
 </odoo>

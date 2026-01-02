@@ -113,14 +113,18 @@ class DinoApiEndpoint(models.Model):
             else:
                 base_time = now_utc.astimezone(tz)
 
+            _logger.debug(f'Computing next_run for {record.name}: base_time={base_time}, tz={tz}')
+
             # Calculate next time
             next_time = self._calculate_next_run_time(record, base_time, tz)
 
             # Convert to UTC for storage (naive datetime)
             if next_time:
                 record.next_run = next_time.astimezone(pytz.UTC).replace(tzinfo=None)
+                _logger.debug(f'Next run for {record.name}: {record.next_run}')
             else:
                 record.next_run = False
+                _logger.warning(f'Could not calculate next_run for {record.name}')
 
     def _calculate_next_run_time(self, record, base_time, tz):
         """Calculate next run time considering all filters"""
@@ -253,21 +257,33 @@ class DinoApiEndpoint(models.Model):
 
 
     def action_activate(self):
-        """Activate endpoint (with auto-save)"""
+        """Activate - make form readonly and show Edit/Run buttons"""
         self.ensure_one()
-        self.write({'active': True})
+        self.write({'active': True, 'cron_running': False})
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
-    def action_deactivate(self):
-        """Deactivate endpoint"""
+    def action_run(self):
+        """Run Now - activate and execute"""
+        self.ensure_one()
+        # Activate endpoint
+        self.write({'active': True})
+        # If cron is enabled, mark as running
+        if self.cron_active:
+            self.write({'cron_running': True})
+        # Execute the endpoint
+        self.run_endpoint(trigger_type='manual')
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
+
+    def action_edit(self):
+        """Edit mode - deactivate for editing"""
         self.ensure_one()
         self.write({'active': False, 'cron_running': False})
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_stop(self):
-        """Остановить крон"""
+        """Stop - deactivate endpoint and cron"""
         self.ensure_one()
-        self.write({'cron_running': False})
+        self.write({'active': False, 'cron_running': False})
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def write(self, vals):
@@ -279,11 +295,7 @@ class DinoApiEndpoint(models.Model):
     def run_endpoint(self, trigger_type='manual'):
         """Execute the endpoint"""
         self.ensure_one()
-        _logger.info(f"Running endpoint: {self.name}")
-
-        # Если крон активен, помечаем как запущенный
-        if self.cron_active and trigger_type == 'manual':
-            self.write({'cron_running': True})
+        _logger.info(f"Running endpoint: {self.name} (trigger: {trigger_type})")
 
         try:
             # Get handler
@@ -337,8 +349,8 @@ class DinoApiEndpoint(models.Model):
             'endpoint_id': self.id,
             'trigger_type': trigger_type,
             'status': status,
-            'request_data': json.dumps({'endpoint': self.name, 'operation': self.operation_type}),
-            'response_data': json.dumps(data) if isinstance(data, dict) else str(data),
+            'request_data': json.dumps({'endpoint': self.name, 'operation': self.operation_type}, ensure_ascii=False),
+            'response_data': json.dumps(data, ensure_ascii=False) if isinstance(data, dict) else str(data),
             'execution_time': 0  # TODO: measure actual time
         })
 

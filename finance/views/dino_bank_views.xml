@@ -33,35 +33,10 @@
                             </button>
                         </div>
                         <group>
-                            <group>
-                                <field name="mfo"/>
-                                <field name="name"/>
-                                <field name="edrpou"/>
-                            </group>
-                            <group>
-                                <field name="start_sync_date"/>
-                            </group>
+                            <field name="mfo"/>
+                            <field name="name"/>
+                            <field name="edrpou"/>
                         </group>
-                        <notebook>
-                            <page name="api_settings" string="API">
-                                <group>
-                                    <group string="API Settings">
-                                        <field name="api_client_id"/>
-                                        <field name="api_key"/>
-                                        <field name="start_sync_date"/>
-                                        <field name="last_sync_date"/>
-                                    </group>
-                                    <group string="CRON Settings">
-                                        <field name="cron_enable"/>
-                                        <field name="cron_overwrite_existing_rates" invisible="not cron_enable"/>
-                                        <field name="cron_interval_number" invisible="not cron_enable"/>
-                                        <field name="cron_interval_type" invisible="not cron_enable"/>
-                                        <field name="cron_time_of_day_hours" widget="float_time" invisible="not cron_enable or cron_interval_type in ('minutes','hours')"/>
-                                        <field name="cron_numbercall" invisible="not cron_enable"/>
-                                    </group>
-                                </group>
-                            </page>
-                        </notebook>
                     </sheet>
                 </form>
             </field>

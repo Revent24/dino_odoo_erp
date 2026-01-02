@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <record id="view_dino_bank_account_tree" model="ir.ui.view">
+    <field name="name">dino.bank.account.tree</field>
+    <field name="model">dino.bank.account</field>
+    <field name="arch" type="xml">
+      <list string="Bank Accounts" create="false" edit="false" delete="false">
+        <field name="name"/>
+        <field name="account_number"/>
+        <field name="currency_id"/>
+        <field name="balance_end_date" string="Date"/>
+        <field name="balance_start" string="Start Balance"/>
+        <field name="turnover_credit" string="Credit"/>
+        <field name="turnover_debit" string="Debit"/>
+        <field name="balance" string="End Balance"/>
+        <field name="last_import_date"/>
+        <field name="active"/>
+      </list>
+    </field>
+  </record>
+
+</odoo>

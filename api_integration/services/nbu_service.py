@@ -34,9 +34,6 @@ def import_nbu_rates(env, bank=None, start_date=None, end_date=None, overwrite=F
     if start_date:
         start = fields.Date.to_date(start_date)
         _logger.warning(f"import_nbu_rates: Start date from param = {start}")
-    elif bank and bank.start_sync_date:
-        start = fields.Date.to_date(bank.start_sync_date)
-        _logger.warning(f"import_nbu_rates: Start date from bank = {start}")
     else:
         # Инкрементальный режим по умолчанию: ищем последнюю запись
         last_rec = rate_model.search([('source', '=', 'nbu')], order='date desc', limit=1)
@@ -391,11 +388,7 @@ def run_sync(env, bank=None):
 
     # 1. Импорт в основную таблицу
     _logger.warning("run_sync: Starting import to dino.currency.rate")
-    import_res = import_nbu_rates(
-        env,
-        bank,
-        overwrite=getattr(bank, 'cron_overwrite_existing_rates', False) if bank else False
-    )
+    import_res = import_nbu_rates(env, bank, overwrite=False)
     _logger.warning(f"run_sync: Import result: {import_res}")
 
     if 'error' in import_res:

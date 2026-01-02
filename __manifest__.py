@@ -8,7 +8,7 @@
     'depends': ['base', 'mail', 'web', 'uom'] ,  # added uom for document lines and quick-create
     'data': [
         'finance/views/dino_bank_views.xml',
-        'finance/views/bank_views.xml',
+        'finance/views/dino_bank_acc_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
         'finance/views/dino_currency_rate_views.xml',
         'finance/views/dino_cashbook_views.xml',
