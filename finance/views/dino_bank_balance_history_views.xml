@@ -62,11 +62,14 @@
                     <field name="bank_account_id"/>
                     <field name="date"/>
                     <filter string="Last 30 Days" name="last_30_days"
-                        domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=30)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(days=30)))]"/>
                     <filter string="Last 90 Days" name="last_90_days"
-                        domain="[('date', '&gt;=', (context_today() - datetime.timedelta(days=90)).strftime('%Y-%m-%d'))]"/>
+                        domain="[('date', '&gt;=', (context_today() - relativedelta(days=90)))]"/>
                     <filter string="This Month" name="this_month"
-                        domain="[('date', '&gt;=', time.strftime('%Y-%m-01'))]"/>
+                        domain="[('date', '&gt;=', context_today().replace(day=1))]"/>
+                    <separator/>
+                    <filter string="Final Balances" name="final_only"
+                        domain="[('is_final', '=', True)]"/>
                     <group expand="0" string="Group By">
                         <filter string="Account" name="group_by_account" context="{'group_by': 'bank_account_id'}"/>
                         <filter string="Date" name="group_by_date" context="{'group_by': 'date:day'}"/>
