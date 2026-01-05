@@ -26,6 +26,10 @@ class DinoProject(models.Model):
     document_ids = fields.One2many('dino.operation.document', 'project_id', string='Documents')
     document_count = fields.Integer(string='Documents Count', compute='_compute_document_count')
 
+    # Payments link: one2many, count and action
+    payment_ids = fields.One2many('dino.project.payment', 'project_id', string=_('Payments'))
+    payment_count = fields.Integer(string=_('Payments Count'), compute='_compute_payment_count')
+
     # VAT rate for project derived from partner.tax_system
     vat_rate = fields.Float(string='VAT Rate (%)', related='partner_id.tax_system_id.vat_rate', readonly=True)
 
@@ -36,12 +40,27 @@ class DinoProject(models.Model):
             else:
                 rec.document_count = 0
 
+    def _compute_payment_count(self):
+        for rec in self:
+            rec.payment_count = self.env['dino.project.payment'].search_count([('project_id', '=', rec.id)])
+
     def action_view_documents(self):
         self.ensure_one()
         return {
             'name': _('Documents'),
             'type': 'ir.actions.act_window',
             'res_model': 'dino.operation.document',
+            'view_mode': 'list,form',
+            'domain': [('project_id', '=', self.id)],
+            'context': {'default_project_id': self.id},
+        }
+
+    def action_view_payments(self):
+        self.ensure_one()
+        return {
+            'name': _('Payments'),
+            'type': 'ir.actions.act_window',
+            'res_model': 'dino.project.payment',
             'view_mode': 'list,form',
             'domain': [('project_id', '=', self.id)],
             'context': {'default_project_id': self.id},

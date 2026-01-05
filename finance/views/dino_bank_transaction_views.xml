@@ -6,6 +6,7 @@
             <field name="arch" type="xml">
                 <list string="Bank Transactions" create="false" edit="false">
                     <field name="datetime" readonly="1"/>
+                    <field name="document_number" readonly="1"/>
                     <field name="description" readonly="1"/>
                     <field name="amount" readonly="1"/>
                     <field name="partner_id" widget="many2one" options="{'no_open': False}"/>
@@ -22,7 +23,7 @@
                         <group>
                             <group string="Transaction info" name="transaction_info">
                                 <field name="bank_account_id" readonly="1"/>
-                                <field name="external_id" readonly="1"/>
+                                <field name="document_number" readonly="1"/>
                                 <field name="datetime" readonly="1"/>
                                 <field name="amount" readonly="1"/>
                                 <field name="balance_after" readonly="1"/>

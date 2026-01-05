@@ -54,22 +54,6 @@
             </field>
         </record>
 
-        <record id="view_dino_bank_balance_history_search" model="ir.ui.view">
-            <field name="name">dino.bank.balance.history.search</field>
-            <field name="model">dino.bank.balance.history</field>
-            <field name="arch" type="xml">
-                <search string="Balance History Filters">
-                    <field name="bank_account_id"/>
-                    <field name="date"/>
-
-                    <group expand="0" string="Group By">
-                        <filter string="Счет" name="group_by_account" context="{'group_by': 'bank_account_id'}"/>
-                        <filter string="Дата" name="group_by_day" context="{'group_by': 'date:day'}"/>
-                    </group>
-                </search>
-            </field>
-        </record>
-
         <record id="view_dino_bank_balance_history_graph" model="ir.ui.view">
             <field name="name">dino.bank.balance.history.graph</field>
             <field name="model">dino.bank.balance.history</field>
@@ -97,7 +81,6 @@
             <field name="name">Balance History</field>
             <field name="res_model">dino.bank.balance.history</field>
             <field name="view_mode">graph,list,pivot,form</field>
-            <field name="search_view_id" ref="view_dino_bank_balance_history_search"/>
         </record>
     </data>
 </odoo>

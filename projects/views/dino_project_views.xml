@@ -69,6 +69,19 @@
                                     </list>
                                 </field>
                             </page>
+                            <page string="Платежи" name="payments">
+                                <field name="payment_ids" context="{'default_project_id': id}">
+                                    <list string="Payments" editable="bottom">
+                                        <field name="partner_id" column_invisible="1"/>
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="number"/>
+                                        <field name="purpose"/>
+                                        <field name="amount" sum="Total"/>
+                                        <field name="transaction_id" domain="[('partner_id', '=', partner_id)]"/>
+                                    </list>
+                                </field>
+                            </page>
                         </notebook>
 
                     </sheet>
@@ -121,6 +134,24 @@
                             <field name="order_ref"/>
                             <field name="partner_id" options="{'no_create': False}" domain="[('tag_ids.role','=','vendor')]" context="{'partner_role_filter':'vendor','default_partner_role':'vendor'}"/>
                         </group>
+                        <notebook>
+                            <page string="Documents" name="documents">
+                                <field name="document_ids" context="{'default_project_id': id}"/>
+                            </page>
+                            <page string="Платежи" name="payments">
+                                <field name="payment_ids" context="{'default_project_id': id}">
+                                    <list string="Payments" editable="bottom">
+                                        <field name="partner_id" column_invisible="1"/>
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="number"/>
+                                        <field name="purpose"/>
+                                        <field name="amount" sum="Total"/>
+                                        <field name="transaction_id" domain="[('partner_id', '=', partner_id)]"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>
@@ -161,6 +192,24 @@
                             <field name="project_type" invisible="1"/>
                             <field name="partner_id" options="{'no_create': False}"/>
                         </group>
+                        <notebook>
+                            <page string="Documents" name="documents">
+                                <field name="document_ids" context="{'default_project_id': id}"/>
+                            </page>
+                            <page string="Платежи" name="payments">
+                                <field name="payment_ids" context="{'default_project_id': id}">
+                                    <list string="Payments" editable="bottom">
+                                        <field name="partner_id" column_invisible="1"/>
+                                        <field name="name"/>
+                                        <field name="date"/>
+                                        <field name="number"/>
+                                        <field name="purpose"/>
+                                        <field name="amount" sum="Total"/>
+                                        <field name="transaction_id" domain="[('partner_id', '=', partner_id)]"/>
+                                    </list>
+                                </field>
+                            </page>
+                        </notebook>
                     </sheet>
                 </form>
             </field>

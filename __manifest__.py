@@ -23,6 +23,7 @@
 
         'projects/views/dino_project_views_sale.xml',
         'projects/views/dino_project_views.xml',
+        'projects/security/ir.model.access.csv',
 
         # Core security and shared data
         'core/security/ir.model.access.csv',

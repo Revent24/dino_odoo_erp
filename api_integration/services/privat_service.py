@@ -183,6 +183,7 @@ def import_transactions(endpoint, startDate=None, endDate=None):
     )
 
     total_created = 0
+    total_updated = 0
     total_skipped = 0
     inactive_acc_count = 0
     total_processed = 0
@@ -210,18 +211,23 @@ def import_transactions(endpoint, startDate=None, endDate=None):
             ('bank_account_id', 'in', [a.id for a in local_accounts]), # Проверяем по всем счетам банка
             ('external_id', 'in', batch_ext_ids)
         ])
-        existing_ids = {r.external_id for r in existing_recs}
-        _logger.info(f"Найдено {len(existing_ids)} дубликатов в базе из {len(batch_ext_ids)} ID")
+        existing_map = {r.external_id: r for r in existing_recs}
+        _logger.info(f"Найдено {len(existing_map)} дубликатов в базе из {len(batch_ext_ids)} ID")
 
         vals_list = []
+        update_list = []
         batch_created = 0
+        batch_updated = 0
         batch_skipped = 0
         batch_unknown = 0
 
         for t in trans_batch:
             # Проверка на дубликат
             ext_id = str(t.get('ID'))
-            if ext_id in existing_ids:
+            existing_rec = existing_map.get(ext_id)
+            
+            if existing_rec and not endpoint.force_full_sync:
+                # Если дубль и флаг выключен - пропускаем
                 batch_skipped += 1
                 continue
 
@@ -253,9 +259,10 @@ def import_transactions(endpoint, startDate=None, endDate=None):
             if not date_val:
                 date_val = _parse_privat_date(t.get('DAT_KL'))
 
-            vals_list.append({
+            transaction_vals = {
                 'bank_account_id': account.id,
                 'external_id': ext_id,
+                'document_number': t.get('NUM_DOC'),
                 'datetime': date_val,
                 'amount': amount,
                 'counterparty_name': t.get('AUT_CNTR_NAM'),
@@ -265,23 +272,38 @@ def import_transactions(endpoint, startDate=None, endDate=None):
                 'counterparty_bank_city': t.get('AUT_CNTR_MFO_CITY'),
                 'description': t.get('OSND') or t.get('REF'),  # Объединяем описание и реф
                 'raw_data': str(t),  # Сохраняем сырой JSON для отладки
-            })
-            batch_created += 1
+            }
+            
+            if existing_rec:
+                # Если запись существует и включен Force Full Sync - обновляем
+                update_list.append((existing_rec, transaction_vals))
+                batch_updated += 1
+            else:
+                # Новая запись
+                vals_list.append(transaction_vals)
+                batch_created += 1
 
         if vals_list:
             TransModel.create(vals_list)
             total_created += batch_created
             _logger.info(f"   + Импортировано {batch_created} новых транзакций из пачки")
-        else:
+        
+        if update_list:
+            for rec, vals in update_list:
+                rec.write(vals)
+            total_updated += batch_updated
+            _logger.info(f"   ↻ Обновлено {batch_updated} транзакций из пачки")
+        
+        if not vals_list and not update_list:
             _logger.info("   Нет новых транзакций для импорта в этой пачке")
 
         total_skipped += batch_skipped
-        _logger.info(f"   Статистика пачки: создано {batch_created}, дубли {batch_skipped}, неактивные счета {batch_unknown}")
+        _logger.info(f"   Статистика пачки: создано {batch_created}, обновлено {batch_updated}, дубли {batch_skipped}, неактивные счета {batch_unknown}")
 
-    _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, дубли {total_skipped}, неактивные счета {inactive_acc_count}")
+    _logger.info(f"Итог импорта: обработано страниц {page_count}, транзакций из API {total_processed}, создано {total_created}, обновлено {total_updated}, дубли {total_skipped}, неактивные счета {inactive_acc_count}")
 
     return {
-        'stats': {'created': total_created, 'skipped': total_skipped, 'inactive_accounts': inactive_acc_count}
+        'stats': {'created': total_created, 'updated': total_updated, 'skipped': total_skipped, 'inactive_accounts': inactive_acc_count}
     }
 
 

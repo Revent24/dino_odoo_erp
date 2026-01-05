@@ -8,6 +8,9 @@ class DinoBankTransaction(models.Model):
     _description = _('Bank Transaction Buffer')
     _order = 'datetime desc, id desc'
 
+    # Computed name for display
+    name = fields.Char(string=_('Name'), compute='_compute_name', store=False)
+
     # Core Fields
     bank_account_id = fields.Many2one('dino.bank.account', string=_('Bank Account'), required=True, ondelete='cascade')
     datetime = fields.Datetime(string=_('Date & Time'), required=True, index=True)
@@ -30,6 +33,7 @@ class DinoBankTransaction(models.Model):
 
     # Technical & Integration Fields
     external_id = fields.Char(string=_('External ID'), index=True, required=True, help=_("Unique transaction ID from the bank's API."))
+    document_number = fields.Char(string=_('Document Number'), help=_("Bank document number (NUM_DOC)"))
     mcc = fields.Integer(string="MCC", help="Merchant Category Code (ISO 18245)")
     raw_data = fields.Text(string="Raw Data", help="Stores the original JSON data of the transaction.")
 
@@ -46,6 +50,24 @@ class DinoBankTransaction(models.Model):
         for trx in self:
             trx.debit = -trx.amount if trx.amount < 0 else 0.0
             trx.credit = trx.amount if trx.amount > 0 else 0.0
+
+    @api.depends('datetime', 'document_number', 'external_id', 'amount', 'currency_id')
+    def _compute_name(self):
+        """Compute display name: date document_number amount currency"""
+        for rec in self:
+            date_str = rec.datetime.strftime('%Y-%m-%d') if rec.datetime else ''
+            doc_num = rec.document_number or rec.external_id or ''
+            # Format amount with comma as decimal separator
+            amount_str = f"{rec.amount:.2f}".replace('.', ',') if rec.amount else '0,00'
+            currency = rec.currency_id.name if rec.currency_id else ''
+            rec.name = f"{date_str} {doc_num} {amount_str} {currency}"
+
+    def name_get(self):
+        """Display transaction as: date document_number amount currency"""
+        result = []
+        for rec in self:
+            result.append((rec.id, rec.name or f"Transaction {rec.id}"))
+        return result
 
     @api.model
     def _find_or_create_partner(self, edrpou, name=None, iban=None, bank_name=None, bank_city=None):
