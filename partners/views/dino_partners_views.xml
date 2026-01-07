@@ -64,17 +64,26 @@
                             <field name="vat_rate" readonly="1"/>
                             <field name="category_id" string="Vendor Category" options="{'no_create': True, 'no_open': False}" domain="[('origin_type', '!=', 'production')]" invisible="1 not in tag_ids"/>
                         </group>
-                        <group string="Bank Info">
-                            <field name="iban"/>
-                            <field name="bank_name"/>
-                            <field name="bank_city"/>
-                        </group>
                         
 
 
                         
                     </group>
                     <notebook>
+                        <page string="Bank Accounts">
+                            <field name="bank_account_ids">
+                                <list editable="bottom" decoration-bf="is_default" delete="false">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="iban"/>
+                                    <field name="bank_name"/>
+                                    <field name="bank_city" optional="hide"/>
+                                    <field name="bank_mfo" optional="hide"/>
+                                    <field name="currency_id" optional="show"/>
+                                    <field name="is_default" widget="boolean_toggle"/>
+                                </list>
+                            </field>
+                        </page>
+                        
                         <page string="Contacts">
                             <field name="contact_ids">
                                 <list editable="bottom">

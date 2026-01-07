@@ -12,19 +12,11 @@
             <field name="type">form</field>
             <field name="arch" type="xml">
                 <form string="Document" display="horizontal">
-                    <!-- Кнопка импорта спецификации из Excel -->
-                    <header>
-                        <button name="%(action_import_specification_excel)d" 
-                                type="action" 
-                                string="Import Excel" 
-                                icon="fa-file-excel-o"
-                                class="btn-secondary"/>
-                    </header>
                     <sheet>
                         <!-- Заголовок: Тип документа -->
                         <div class="oe_title">
                             <h1 style="width: 120%;">
-                                <field name="document_type" widget="selection" nolabel="1"/>
+                                <field name="document_type_id" options="{'no_create_edit': False}" nolabel="1"/>
                             </h1>
                         </div>
                         <!-- Основные поля: номер, дата, партнер, валюта -->
@@ -49,8 +41,7 @@
                                     <list string="Nomenclature" editable="bottom">
                                         <field name="sequence" widget="handle"/>
                                         <field name="line_number" string="№"/>
-                                        <field name="name" string="Supplier Item"/>
-                                        <field name="supplier_nomenclature_id" string="Supplier Item Mapping" context="{'default_partner_id': parent.partner_id}" options="{'no_open': True}"/>
+                                        <field name="supplier_nomenclature_id" string="Supplier Item" context="{'default_partner_id': parent.partner_id}" options="{'no_open': True}"/>
                                         <field name="nomenclature_id" 
                                                string="Stock Item"
                                                widget="many2one"
@@ -72,6 +63,114 @@
                             <!-- Примечания: HTML-поле для дополнительной информации -->
                             <page string="Notes" name="notes">
                                 <field name="notes"/>
+                            </page>
+
+                            <!-- Импорт из текста -->
+                            <page string="Import Text" name="import_text">
+                                <group>
+                                    <group>
+                                        <field name="parser_agent_id" 
+                                               options="{'no_create': True, 'no_open': True}"
+                                               placeholder="Выберите агента парсинга..."/>
+                                    </group>
+                                    <group>
+                                        <button name="action_import_text" 
+                                                string="Импорт" 
+                                                type="object" 
+                                                class="btn-primary"
+                                                icon="fa-magic"/>
+                                        <button name="action_test_ocr" 
+                                                string="🔍 Тест OCR" 
+                                                type="object" 
+                                                class="btn-secondary"
+                                                icon="fa-search"
+                                                help="Просто распознать текст из изображения (без обработки)"/>
+                                    </group>
+                                </group>
+                                
+                                <separator string="Текст документа или скриншот"/>
+                                <field name="import_text_content" 
+                                       placeholder="Вставьте текст или скриншот документа (Ctrl+V)..."
+                                       nolabel="1"
+                                       options="{'style-inline': true}"/>
+                                
+                                <separator string="Или загрузите файл"/>
+                                <group>
+                                    <field name="import_image" 
+                                           filename="import_image_filename"
+                                           nolabel="1"/>
+                                    <field name="import_image_filename" invisible="1"/>
+                                </group>
+                                
+                                <separator string="Результат OCR (тестування)" invisible="not ocr_result_text"/>
+                                <field name="ocr_result_text" 
+                                       nolabel="1"
+                                       invisible="not ocr_result_text"
+                                       widget="text"
+                                       options="{'rows': 15}"/>
+                                
+                                <group>
+                                    <div class="alert alert-info" role="alert">
+                                        <strong>📋 Инструкция по импорту:</strong>
+                                        <ol style="margin: 5px 0 0 0; padding-left: 20px;">
+                                            <li><b>Вставьте текст или скриншот</b> прямо в поле выше (Ctrl+V)</li>
+                                            <li><b>ИЛИ загрузите файл</b> с изображением документа</li>
+                                            <li><b>Выберите агента парсинга:</b>
+                                                <ul style="margin: 3px 0 0 0;">
+                                                    <li>Regex Parser - для текста (быстро, бесплатно)</li>
+                                                    <li>AI Parser - для скриншотов и фото (точнее, платно)</li>
+                                                </ul>
+                                            </li>
+                                            <li>Нажмите <b>"Импорт"</b> - система распознает документ и заполнит спецификацию</li>
+                                        </ol>
+                                        <p style="margin: 10px 0 0 0;"><i>💡 AI-парсеры работают с фото документов, сканами, счетами любого формата</i></p>
+                                    </div>
+                                </group>
+                            </page>
+
+                            <!-- Вложения для импорта -->
+                            <page string="Import Files" name="attachments">
+                                <group>
+                                    <div class="alert alert-info" role="alert">
+                                        <strong>📎 Как импортировать номенклатуру:</strong>
+                                        <ol style="margin: 5px 0 0 0; padding-left: 20px;">
+                                            <li>Нажмите "Добавить строку"</li>
+                                            <li>Загрузите файл (Excel)</li>
+                                            <li>Выберите тип парсера (Sapriz для счетов 1С)</li>
+                                            <li>Нажмите кнопку "Import" справа</li>
+                                            <li>Система автоматически найдет или создаст позиции в справочнике контрагента</li>
+                                        </ol>
+                                    </div>
+                                </group>
+                                <field name="attachment_ids" 
+                                       context="{'default_document_id': id}">
+                                    <list editable="bottom"
+                                          decoration-success="import_status=='imported'" 
+                                          decoration-danger="import_status=='error'"
+                                          decoration-muted="import_status=='draft'">
+                                        <field name="filename"/>
+                                        <field name="file_data" filename="filename"/>
+                                        <field name="parser_type"/>
+                                        <field name="import_status" widget="badge" readonly="1"
+                                               decoration-success="import_status=='imported'"
+                                               decoration-warning="import_status=='importing'"
+                                               decoration-danger="import_status=='error'"
+                                               decoration-info="import_status=='draft'"/>
+                                        <field name="imported_lines_count" readonly="1" optional="hide"/>
+                                        <field name="import_date" readonly="1" optional="hide"/>
+                                        <button name="action_import" 
+                                                string="Import" 
+                                                type="object" 
+                                                icon="fa-download"
+                                                class="btn-primary"
+                                                invisible="import_status in ['imported', 'importing']"/>
+                                        <button name="action_reset" 
+                                                string="Reset" 
+                                                type="object" 
+                                                icon="fa-refresh"
+                                                invisible="import_status == 'draft'"/>
+                                    </list>
+                                </field>
                             </page>
                         </notebook>
 
@@ -111,11 +210,12 @@
             <field name="model">dino.operation.document</field>
             <field name="arch" type="xml">
                 <list string="Documents">
-                    <field name="document_type"/>
+                    <field name="document_type_id"/>
                     <field name="number"/>
                     <field name="date"/>
+                    <field name="partner_id"/>
                     <field name="project_id"/>
-                    <field name="amount_total" sum="Total"/>
+                    <field name="amount_total"/>
                 </list>
             </field>
         </record>

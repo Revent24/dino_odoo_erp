@@ -152,7 +152,17 @@ class ImportSpecificationExcel(models.TransientModel):
         if document.specification_ids:
             max_sequence = max(document.specification_ids.mapped('sequence'))
 
+        # Удалить существующие строки если требуется
+        if self.env.context.get('replace_existing', False):
+            document.specification_ids.unlink()
+            max_sequence = 0
+
         lines_to_create = []
+        
+        # Получить контрагента документа для работы со справочником
+        partner = document.partner_id
+        if not partner:
+            raise UserError(_("Document must have a partner to import nomenclature"))
         
         # Парсинг строк данных - извлечение непустых ячеек по порядку
         # Ожидаемый порядок: № | Название | Кол-во | Ед.изм. | Цена | ...
@@ -205,7 +215,24 @@ class ImportSpecificationExcel(models.TransientModel):
             # Увеличить последовательность
             max_sequence += 10
 
-            # Создать данные строки
+            # === ЛОГИКА РАБОТЫ СО СПРАВОЧНИКОМ КОНТРАГЕНТА ===
+            # Шаг 1: Найти или создать запись в справочнике контрагента
+            # - Если название уже есть → используем существующую запись
+            # - Если название новое → создаем новую запись
+            supplier_nomenclature = self.env['dino.partner.nomenclature'].find_or_create(
+                partner_id=partner.id,
+                supplier_name=name,
+                auto_create=True
+            )
+            
+            # Шаг 2: Получить связанную складскую номенклатуру (если связь уже настроена)
+            # - Если связь есть → показываем её в документе
+            # - Если связи нет → оставляем пустым (пользователь настроит позже)
+            nomenclature_id = supplier_nomenclature.nomenclature_id.id if supplier_nomenclature.nomenclature_id else False
+
+            # Создать данные строки спецификации
+            # supplier_nomenclature_id - ID записи из справочника контрагента (всегда заполнен)
+            # nomenclature_id - ID складской номенклатуры (заполнен только если связь уже настроена)
             vals = {
                 'document_id': document.id,
                 'name': name,
@@ -213,6 +240,8 @@ class ImportSpecificationExcel(models.TransientModel):
                 'price_untaxed': price_untaxed,
                 'price_tax': price_with_tax,
                 'sequence': max_sequence,
+                'supplier_nomenclature_id': supplier_nomenclature.id,  # ← Запись из справочника контрагента
+                'nomenclature_id': nomenclature_id,  # ← Складская номенклатура (может быть False)
             }
 
             lines_to_create.append(vals)

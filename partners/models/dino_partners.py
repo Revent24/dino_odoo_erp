@@ -18,10 +18,14 @@ class DinoPartner(models.Model):
     full_name = fields.Char(string='Full Name', translate=True)
     name_short = fields.Char(string='Short Name', translate=True)
     egrpou = fields.Char(string='EGRPOU', index=True)
-    iban = fields.Char(string='IBAN', help='Bank account number (IBAN)')
-    bank_name = fields.Char(string='Bank Name', help='Name of the bank')
-    bank_city = fields.Char(string='Bank City', help='City of the bank')
+    
+    # Банковские счета (через отдельную модель)
+    bank_account_ids = fields.One2many('dino.partner.bank.account', 'partner_id', string='Bank Accounts')
+    bank_account_count = fields.Integer('Bank Accounts', compute='_compute_bank_account_count')
+    default_bank_account_id = fields.Many2one('dino.partner.bank.account', string='Default Account', compute='_compute_default_bank_account', store=False)
+    
     address = fields.Char(string='Address', translate=True)
+    phone = fields.Char(string='Phone', help='Телефони контрагента')
     director = fields.Char(string='Director', translate=True)
     director_gen = fields.Char(string='Director (Gen)', translate=True)
     kved = fields.Char(string='KVED', translate=True)
@@ -53,6 +57,16 @@ class DinoPartner(models.Model):
     def _compute_partner_nomenclature_count(self):
         for rec in self:
             rec.partner_nomenclature_count = self.env['dino.partner.nomenclature'].search_count([('partner_id', '=', rec.id)])
+    
+    def _compute_bank_account_count(self):
+        """Подсчет количества банковских счетов"""
+        for rec in self:
+            rec.bank_account_count = len(rec.bank_account_ids)
+    
+    def _compute_default_bank_account(self):
+        """Получить основной банковский счет"""
+        for rec in self:
+            rec.default_bank_account_id = rec.bank_account_ids.filtered(lambda a: a.is_default)[:1]
 
     def action_view_partner_nomenclature(self):
         self.ensure_one()

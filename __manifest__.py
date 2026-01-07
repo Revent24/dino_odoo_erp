@@ -16,9 +16,15 @@
 
         # Documents module views (moved before projects to ensure views validate)
         # Wizard for importing specifications must be loaded before the document form that references it
+        'documents/security/ir.model.access.csv',
+        'documents/data/document_types.xml',
+        'documents/data/parser_agents.xml',
         'documents/wizard/import_specification_excel_views.xml',
+        'documents/views/dino_document_type_views.xml',
+        'documents/views/dino_parser_agent_views.xml',
         'documents/views/dino_operation_document_views.xml',
         'documents/views/dino_operation_document_specification_views.xml',
+        'documents/views/dino_document_attachment_views.xml',
         'documents/views/dino_nomenclature_quick_create.xml',
 
         'projects/views/dino_project_views_sale.xml',
@@ -41,8 +47,7 @@
 
         'partners/views/dino_partners_actions.xml',
         'partners/views/dino_partners_views.xml',
-        'partners/views/dino_partner_nomenclature_views.xml',
-        'partners/views/dino_partner_tag_views.xml',
+        'partners/views/dino_partner_nomenclature_views.xml',        'partners/views/dino_partner_bank_account_views.xml',        'partners/views/dino_partner_tag_views.xml',
         'partners/views/dino_tax_system_views.xml',
 
 

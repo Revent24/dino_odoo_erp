@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dino_operation_user,dino.operation.user,model_dino_operation,base.group_user,1,1,1,1
+access_dino_operation_document_user,dino.operation.document.user,model_dino_operation_document,base.group_user,1,1,1,1
+access_dino_operation_document_specification_user,dino.operation.document.specification.user,model_dino_operation_document_specification,base.group_user,1,1,1,1
+access_dino_document_attachment_user,dino.document.attachment.user,model_dino_document_attachment,base.group_user,1,1,1,1
+access_dino_import_specification_excel_user,dino.import.specification.excel.user,model_dino_import_specification_excel,base.group_user,1,1,1,1
+access_dino_parser_agent_user,dino.parser.agent.user,model_dino_parser_agent,base.group_user,1,1,1,1
+access_dino_document_type_user,dino.document.type.user,model_dino_document_type,base.group_user,1,1,1,1

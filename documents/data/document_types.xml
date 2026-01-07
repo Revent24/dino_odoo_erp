@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        
+        <!-- Видаткова накладна -->
+        <record id="document_type_invoice" model="dino.document.type">
+            <field name="name">Видаткова накладна</field>
+            <field name="code">invoice</field>
+            <field name="sequence">10</field>
+            <field name="description">Видаткова накладна на товари/послуги</field>
+        </record>
+        
+        <!-- Рахунок -->
+        <record id="document_type_bill" model="dino.document.type">
+            <field name="name">Рахунок</field>
+            <field name="code">bill</field>
+            <field name="sequence">20</field>
+            <field name="description">Рахунок на оплату</field>
+        </record>
+        
+        <!-- Рахунок-фактура -->
+        <record id="document_type_invoice_bill" model="dino.document.type">
+            <field name="name">Рахунок-фактура</field>
+            <field name="code">invoice_bill</field>
+            <field name="sequence">25</field>
+            <field name="description">Рахунок-фактура (поєднання накладної та рахунку)</field>
+        </record>
+        
+        <!-- Акт виконаних робіт -->
+        <record id="document_type_act" model="dino.document.type">
+            <field name="name">Акт виконаних робіт</field>
+            <field name="code">act</field>
+            <field name="sequence">30</field>
+            <field name="description">Акт приймання-передачі виконаних робіт/послуг</field>
+        </record>
+        
+        <!-- Товарна накладна -->
+        <record id="document_type_goods_receipt" model="dino.document.type">
+            <field name="name">Товарна накладна</field>
+            <field name="code">goods_receipt</field>
+            <field name="sequence">40</field>
+            <field name="description">Товарна накладна (ТОРГ-12)</field>
+        </record>
+        
+        <!-- Договір -->
+        <record id="document_type_contract" model="dino.document.type">
+            <field name="name">Договір</field>
+            <field name="code">contract</field>
+            <field name="sequence">50</field>
+            <field name="description">Договір поставки/підряду</field>
+        </record>
+        
+        <!-- Інше -->
+        <record id="document_type_other" model="dino.document.type">
+            <field name="name">Інше</field>
+            <field name="code">other</field>
+            <field name="sequence">100</field>
+            <field name="description">Інший тип документа</field>
+        </record>
+        
+    </data>
+</odoo>

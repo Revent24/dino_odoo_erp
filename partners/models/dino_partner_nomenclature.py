@@ -25,3 +25,31 @@ class DinoPartnerNomenclature(models.Model):
                 label = "%s → %s" % (rec.name, rec.nomenclature_id.name)
             res.append((rec.id, label))
         return res
+
+    @api.model
+    def find_or_create(self, partner_id, supplier_name, auto_create=True):
+        """
+        Найти или создать запись в справочнике номенклатуры контрагента
+        
+        :param partner_id: ID контрагента
+        :param supplier_name: Название позиции у поставщика
+        :param auto_create: Автоматически создавать если не найдено
+        :return: запись dino.partner.nomenclature или False
+        """
+        if not partner_id or not supplier_name:
+            return False
+        
+        # Поиск существующей записи
+        nomenclature = self.search([
+            ('partner_id', '=', partner_id),
+            ('name', '=', supplier_name)
+        ], limit=1)
+        
+        # Создание новой записи если не найдено и разрешено
+        if not nomenclature and auto_create:
+            nomenclature = self.create({
+                'partner_id': partner_id,
+                'name': supplier_name,
+            })
+        
+        return nomenclature

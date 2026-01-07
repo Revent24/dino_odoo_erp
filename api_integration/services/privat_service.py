@@ -270,6 +270,7 @@ def import_transactions(endpoint, startDate=None, endDate=None):
                 'counterparty_iban': t.get('AUT_CNTR_ACC'),
                 'counterparty_bank_name': t.get('AUT_CNTR_MFO_NAME'),
                 'counterparty_bank_city': t.get('AUT_CNTR_MFO_CITY'),
+                'counterparty_bank_mfo': t.get('AUT_CNTR_MFO'),
                 'description': t.get('OSND') or t.get('REF'),  # Объединяем описание и реф
                 'raw_data': str(t),  # Сохраняем сырой JSON для отладки
             }

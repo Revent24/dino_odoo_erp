@@ -6,6 +6,7 @@ access_dino_cashbook,dino.cashbook,model_dino_cashbook,base.group_user,1,1,1,1
 access_dino_component_category,Dino Component Category Access,model_dino_component_category,base.group_user,1,1,1,1
 access_dino_uom,Dino UoM Access,model_dino_uom,base.group_user,1,1,1,1
 access_dino_partner,Dino Partner Access,model_dino_partner,base.group_user,1,1,1,1
+access_dino_partner_bank_account,Dino Partner Bank Account Access,model_dino_partner_bank_account,base.group_user,1,1,1,1
 access_dino_partner_contact,Dino Partner Contact Access,model_dino_partner_contact,base.group_user,1,1,1,1
 access_dino_partner_tag,Dino Partner Tag Access,model_dino_partner_tag,base.group_user,1,1,1,1
 access_dino_partner_nomenclature,Dino Partner Nomenclature Access,model_dino_partner_nomenclature,base.group_user,1,1,1,1

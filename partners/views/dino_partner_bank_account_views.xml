@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ==============================================
+             TREE VIEW: Список банковских счетов
+             ============================================== -->
+        <record id="view_dino_partner_bank_account_list" model="ir.ui.view">
+            <field name="name">dino.partner.bank.account.list</field>
+            <field name="model">dino.partner.bank.account</field>
+            <field name="arch" type="xml">
+                <list string="Bank Accounts" 
+                      default_order="is_default desc, sequence"
+                      decoration-bf="is_default">
+                    <field name="sequence" widget="handle"/>
+                    <field name="iban"/>
+                    <field name="bank_name"/>
+                    <field name="bank_mfo" optional="hide"/>
+                    <field name="currency_id" optional="show"/>
+                    <field name="is_default" widget="boolean_toggle"/>
+                    <field name="active" widget="boolean_toggle" optional="hide"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             FORM VIEW: Форма банковского счета
+             ============================================== -->
+        <record id="view_dino_partner_bank_account_form" model="ir.ui.view">
+            <field name="name">dino.partner.bank.account.form</field>
+            <field name="model">dino.partner.bank.account</field>
+            <field name="arch" type="xml">
+                <form string="Bank Account">
+                    <sheet>
+                        <div class="oe_button_box" name="button_box">
+                            <field name="active" widget="boolean_button" 
+                                   options="{'terminology': 'active'}"/>
+                        </div>
+                        
+                        <group>
+                            <group>
+                                <field name="partner_id"/>
+                                <field name="iban"/>
+                                <field name="is_default"/>
+                            </group>
+                            <group>
+                                <field name="bank_name"/>
+                                <field name="bank_mfo"/>
+                                <field name="currency_id"/>
+                            </group>
+                        </group>
+                        
+                        <group>
+                            <field name="notes" placeholder="Додаткова інформація про рахунок..."/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+    </data>
+</odoo>

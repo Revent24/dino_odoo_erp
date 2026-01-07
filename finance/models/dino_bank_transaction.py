@@ -30,6 +30,7 @@ class DinoBankTransaction(models.Model):
     counterparty_edrpou = fields.Char(string=_('Counterparty EDRPOU'))
     counterparty_bank_name = fields.Char(string=_('Bank Name'))
     counterparty_bank_city = fields.Char(string=_('Bank City'))
+    counterparty_bank_mfo = fields.Char(string=_('Bank MFO'), help=_('МФО банку (6 цифр)'))
 
     # Technical & Integration Fields
     external_id = fields.Char(string=_('External ID'), index=True, required=True, help=_("Unique transaction ID from the bank's API."))
@@ -70,46 +71,44 @@ class DinoBankTransaction(models.Model):
         return result
 
     @api.model
-    def _find_or_create_partner(self, edrpou, name=None, iban=None, bank_name=None, bank_city=None):
+    def _find_or_create_partner(self, edrpou, name=None, iban=None, bank_name=None, bank_city=None, bank_mfo=None):
         """
-        Find or create partner by EDRPOU and update fields from transaction data.
+        Find or create partner by EDRPOU and create/find bank account.
         
         :param edrpou: Counterparty EDRPOU
         :param name: Counterparty name
         :param iban: Counterparty IBAN
         :param bank_name: Bank name
         :param bank_city: Bank city
+        :param bank_mfo: Bank MFO
         :return: dino.partner record or False
         """
         if not edrpou:
             return False
         
         Partner = self.env['dino.partner']
+        BankAccount = self.env['dino.partner.bank.account']
         
         # Search for existing partner by EDRPOU
         partner = Partner.search([('egrpou', '=', edrpou)], limit=1)
         
-        if partner:
-            # Update fields if they are empty
-            vals = {}
-            if iban and not partner.iban:
-                vals['iban'] = iban
-            if bank_name and not partner.bank_name:
-                vals['bank_name'] = bank_name
-            if bank_city and not partner.bank_city:
-                vals['bank_city'] = bank_city
-            if vals:
-                partner.write(vals)
-        else:
+        if not partner:
             # Create new partner
             vals = {
                 'name': name or f'Partner {edrpou}',
                 'egrpou': edrpou,
-                'iban': iban,
-                'bank_name': bank_name,
-                'bank_city': bank_city,
             }
             partner = Partner.create(vals)
+        
+        # Create or find bank account if IBAN provided
+        if iban and partner:
+            BankAccount.find_or_create(
+                partner_id=partner.id,
+                iban=iban,
+                bank_name=bank_name,
+                bank_city=bank_city,
+                bank_mfo=bank_mfo
+            )
         
         return partner
 
@@ -124,7 +123,8 @@ class DinoBankTransaction(models.Model):
                     name=vals.get('counterparty_name'),
                     iban=vals.get('counterparty_iban'),
                     bank_name=vals.get('counterparty_bank_name'),
-                    bank_city=vals.get('counterparty_bank_city')
+                    bank_city=vals.get('counterparty_bank_city'),
+                    bank_mfo=vals.get('counterparty_bank_mfo')
                 )
                 if partner:
                     vals['partner_id'] = partner.id

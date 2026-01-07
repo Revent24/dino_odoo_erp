@@ -34,6 +34,9 @@
     <menuitem id="menu_dino_documents_root" name="Documents" sequence="53" web_icon="dino_erp,core/menu_icons/docs.png"/>
     <menuitem id="menu_dino_document_list" name="Document List" parent="menu_dino_documents_root" action="action_dino_operation_document_list" sequence="1"/>
     <menuitem id="menu_dino_document_specifications" name="Specifications" parent="menu_dino_documents_root" action="action_dino_operation_document_specification_list" sequence="2"/>
+    <menuitem id="menu_dino_documents_config" name="Configurations" parent="menu_dino_documents_root" sequence="100"/>
+    <menuitem id="menu_dino_document_type" name="Document Types" parent="menu_dino_documents_config" action="action_dino_document_type" sequence="1"/>
+    <menuitem id="menu_dino_parser_agent" name="Parser Agents" parent="menu_dino_documents_config" action="action_dino_parser_agent" sequence="2"/>
   
 
     <!-- Меню Контрагенты -->

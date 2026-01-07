@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Агент по умолчанию: без агента (ручной разбор) -->
+        <record id="parser_agent_none" model="dino.parser.agent">
+            <field name="name">Без агента (ручной ввод)</field>
+            <field name="sequence">1</field>
+            <field name="agent_type">none</field>
+            <field name="active" eval="True"/>
+            <field name="description">Ручной разбор документа без автоматического парсинга. Используйте базовый regex парсер для типовых форматов.</field>
+        </record>
+        
+        <!-- Универсальный regex парсер -->
+        <record id="parser_agent_regex" model="dino.parser.agent">
+            <field name="name">Универсальный regex парсер</field>
+            <field name="sequence">10</field>
+            <field name="agent_type">regex_universal</field>
+            <field name="active" eval="True"/>
+            <field name="description">Базовый парсер на регулярных выражениях. Поддерживает типовые форматы накладных и счетов.</field>
+        </record>
+    </data>
+</odoo>

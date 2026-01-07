@@ -30,7 +30,8 @@ class DinoOperationDocumentSpecification(models.Model):
     name = fields.Char(
         string='Description',
         required=True,
-        translate=True
+        translate=True,
+        help='Supplier item name - used as reference to partner nomenclature'
     )
     quantity = fields.Float(
         string='Quantity',
@@ -115,13 +116,16 @@ class DinoOperationDocumentSpecification(models.Model):
     supplier_nomenclature_id = fields.Many2one(
         'dino.partner.nomenclature',
         string='Supplier Item Mapping',
-        help='Mapping entry: supplier item → internal nomenclature'
+        help='Reference to partner nomenclature catalog. Created automatically during import. '
+             'Contains supplier item name and optional link to warehouse item.'
     )
 
     nomenclature_id = fields.Many2one(
         'dino.nomenclature',
         string='Nomenclature',
-        help='Link to warehouse nomenclature from stock module'
+        help='Link to warehouse nomenclature from stock module. '
+             'Filled automatically if mapping already exists in partner catalog. '
+             'You can set it manually to create new mapping.'
     )
 
     # === ВЫЧИСЛЯЕМЫЕ МЕТОДЫ ===
@@ -175,8 +179,24 @@ class DinoOperationDocumentSpecification(models.Model):
 
     @api.onchange('supplier_nomenclature_id')
     def _onchange_supplier_nomenclature_id(self):
-        """Public onchange wrapper to be triggered when mapping selected in the view"""
-        self._onchange_supplier_mapping()
+        """При выборе записи из справочника контрагента автоматически заполняем поля"""
+        if self.supplier_nomenclature_id:
+            # Заполняем название из справочника контрагента
+            self.name = self.supplier_nomenclature_id.name
+            # Заполняем связанную складскую номенклатуру (если есть)
+            if self.supplier_nomenclature_id.nomenclature_id:
+                self.nomenclature_id = self.supplier_nomenclature_id.nomenclature_id
+            # Заполняем единицу измерения (если есть)
+            if self.supplier_nomenclature_id.uom_id:
+                self.uom_id = self.supplier_nomenclature_id.uom_id
+
+    @api.onchange('nomenclature_id')
+    def _onchange_nomenclature_id(self):
+        """При выборе складской номенклатуры обновляем связь в справочнике контрагента"""
+        if self.nomenclature_id and self.supplier_nomenclature_id:
+            # Если у записи в справочнике еще нет связи - создаем ее
+            if not self.supplier_nomenclature_id.nomenclature_id:
+                self.supplier_nomenclature_id.nomenclature_id = self.nomenclature_id
 
     def _update_nomenclature_cost(self):
         """Обновляет стоимость в связанной номенклатуре самой свежей ценой"""
@@ -224,18 +244,17 @@ class DinoOperationDocumentSpecification(models.Model):
 
     @api.model_create_multi
     def create(self, vals_list):
-        """При создании строки автоматически ищем связь с номенклатурой"""
-        for vals in vals_list:
-            # Если nomenclature_id не указана, пытаемся найти по названию
-            if 'name' in vals and not vals.get('nomenclature_id'):
-                nomenclature = self._find_nomenclature_by_supplier_name(vals['name'])
-                if nomenclature:
-                    vals['nomenclature_id'] = nomenclature.id
-        
+        """При создании строки через API (импорт) поля уже заполнены"""
         records = super().create(vals_list)
         
         # После создания обновляем стоимость в номенклатуре
         records._update_nomenclature_cost()
+        
+        # Обновляем связь в справочнике контрагента если она была создана
+        for record in records:
+            if record.nomenclature_id and record.supplier_nomenclature_id:
+                if not record.supplier_nomenclature_id.nomenclature_id:
+                    record.supplier_nomenclature_id.nomenclature_id = record.nomenclature_id
         
         return records
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Универсальный regex парсер (по умолчанию) -->
+        <record id="parser_agent_regex" model="dino.parser.agent">
+            <field name="name">Универсальный regex парсер</field>
+            <field name="sequence">10</field>
+            <field name="agent_type">regex_universal</field>
+            <field name="active" eval="True"/>
+            <field name="description">Базовый парсер на регулярных выражениях. Поддерживает типовые форматы накладных и счетов. Очищает HTML теги и извлекает данные из структурированного текста.</field>
+        </record>
+    </data>
+</odoo>
