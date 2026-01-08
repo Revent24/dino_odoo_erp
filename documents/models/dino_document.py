@@ -37,6 +37,14 @@ class DinoOperationDocument(models.Model):
         help='Manual ordering inside operation documents'
     )
     
+    # Статус документа
+    state = fields.Selection([
+        ('draft', 'Draft'),
+        ('edit', 'Edit'),
+        ('ready', 'Ready'),
+        ('done', 'Done'),
+    ], string='Status', default='draft', required=True, tracking=True)
+    
     # Тип документа (новое поле)
     document_type_id = fields.Many2one(
         'dino.document.type',
@@ -119,7 +127,8 @@ class DinoOperationDocument(models.Model):
     parser_agent_id = fields.Many2one(
         'dino.parser.agent',
         string='Parser Agent',
-        help='Select parser agent for text import'
+        help='Select parser agent for text import',
+        default=lambda self: self.env['dino.parser.agent'].search([('is_default', '=', True)], limit=1)
     )
     import_text_content = fields.Html(
         string='Document Text',
@@ -132,10 +141,10 @@ class DinoOperationDocument(models.Model):
     )
     import_image_filename = fields.Char('Image Filename')
     
-    # Результат OCR (для тестирования)
+    # Результат парсинга в JSON
     ocr_result_text = fields.Text(
-        string='OCR Result',
-        help='Text extracted by Tesseract OCR (for testing)',
+        string='JSON Response',
+        help='JSON response from AI parser (for debugging)',
         readonly=True
     )
 
@@ -205,6 +214,24 @@ class DinoOperationDocument(models.Model):
             'res_id': self.id,
             'view_mode': 'form',
             'target': 'current',
+        }
+    
+    def action_copy_json(self):
+        """Показать JSON для копирования"""
+        self.ensure_one()
+        if not self.ocr_result_text:
+            raise UserError('JSON пустой, нечего копировать')
+        
+        # Показать notification с инструкцией
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'JSON готов к копированию',
+                'message': 'Выделите весь текст в поле JSON и нажмите Ctrl+C',
+                'type': 'info',
+                'sticky': False,
+            }
         }
     
     def action_import_text(self):

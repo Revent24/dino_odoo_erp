@@ -12,6 +12,9 @@
             <field name="type">form</field>
             <field name="arch" type="xml">
                 <form string="Document" display="horizontal">
+                    <header>
+                        <field name="state" widget="statusbar" options="{'clickable': '1'}"/>
+                    </header>
                     <sheet>
                         <!-- Заголовок: Тип документа -->
                         <div class="oe_title">
@@ -70,7 +73,7 @@
                                 <group>
                                     <group>
                                         <field name="parser_agent_id" 
-                                               options="{'no_create': True, 'no_open': True}"
+                                               options="{'no_create': True}"
                                                placeholder="Выберите агента парсинга..."/>
                                     </group>
                                     <group>
@@ -102,12 +105,22 @@
                                     <field name="import_image_filename" invisible="1"/>
                                 </group>
                                 
-                                <separator string="Результат OCR (тестування)" invisible="not ocr_result_text"/>
-                                <field name="ocr_result_text" 
-                                       nolabel="1"
-                                       invisible="not ocr_result_text"
-                                       widget="text"
-                                       options="{'rows': 15}"/>
+                                <separator string="JSON Response" invisible="not ocr_result_text"/>
+                                <group invisible="not ocr_result_text">
+                                    <div class="d-flex align-items-start">
+                                        <field name="ocr_result_text" 
+                                               nolabel="1"
+                                               widget="ace"
+                                               options="{'mode': 'json', 'showPrintMargin': false}"
+                                               style="flex: 1; min-height: 300px;"/>
+                                        <button name="action_copy_json" 
+                                                string="📋" 
+                                                type="object" 
+                                                class="btn-link ms-2"
+                                                title="Copy JSON to clipboard"
+                                                style="font-size: 1.2rem; padding: 0;"/>
+                                    </div>
+                                </group>
                                 
                                 <group>
                                     <div class="alert alert-info" role="alert">
@@ -210,6 +223,7 @@
             <field name="model">dino.operation.document</field>
             <field name="arch" type="xml">
                 <list string="Documents">
+                    <field name="state" widget="badge" decoration-info="state == 'draft'" decoration-warning="state == 'edit'" decoration-success="state == 'ready'" decoration-muted="state == 'done'"/>
                     <field name="document_type_id"/>
                     <field name="number"/>
                     <field name="date"/>

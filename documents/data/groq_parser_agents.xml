@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- Groq Llama 3.2 Vision Parser -->
+        <record id="parser_agent_groq_llama_vision" model="dino.parser.agent">
+            <field name="name">Groq Llama 3.2 Vision (11B)</field>
+            <field name="sequence">20</field>
+            <field name="agent_type">ai_groq</field>
+            <field name="active" eval="False"/>
+            <field name="description">Модель Llama-3.2-11b-vision-preview через Groq API. 
+Підтримує розпізнавання тексту з картинок та документів.
+Формат: OpenAI-compatible API з підтримкою image_url.
+
+Рекомендації:
+- Зображення: макс. 4MB, роздільна здатність до 2000x2000 px
+- Формат відповіді: JSON Object
+- Ліміти Free Tier: ~3-15 RPM, ~7,000-15,000 TPM, ~100-500 RPD</field>
+            
+            <!-- API Settings -->
+            <field name="api_endpoint">https://api.groq.com/openai/v1/chat/completions</field>
+            <field name="model_name">llama-3.2-11b-vision-preview</field>
+            <field name="api_key">YOUR_GROQ_API_KEY</field>
+            
+            <!-- Generation Parameters -->
+            <field name="temperature">0.1</field>
+            <field name="max_tokens">4000</field>
+            
+            <!-- Rate Limits (Free Tier approximate) -->
+            <field name="rate_limit_rpm">15</field>
+            <field name="rate_limit_tpm">15000</field>
+            <field name="rate_limit_rpd">500</field>
+        </record>
+    </data>
+</odoo>

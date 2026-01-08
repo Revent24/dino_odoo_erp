@@ -51,7 +51,7 @@ class AIParserService:
         :param kwargs: Додаткові параметри (api_key, model_name, etc.)
         :return: dict з даними
         """
-        if agent_type == 'ai_openai_compatible':
+        if agent_type in ['ai_openai_compatible', 'ai_groq']:
             return OpenRouterParser.parse(text, image_data, partner_name, **kwargs)
         elif agent_type == 'ai_google':
             return GoogleGeminiParser.parse(text, image_data, partner_name, **kwargs)
@@ -129,12 +129,18 @@ class OpenRouterParser:
 Поверни ТІЛЬКИ JSON, без додаткового тексту."""
             
             # Підготувати запит
+            # Перевірка чи це Groq API
+            is_groq = 'groq.com' in api_base_url.lower()
+            
             headers = {
                 "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://odoo.local",  # OpenRouter вимагає
-                "X-Title": "Dino ERP Document Parser"
+                "Content-Type": "application/json"
             }
+            
+            # Додаткові заголовки тільки для OpenRouter
+            if not is_groq:
+                headers["HTTP-Referer"] = "https://odoo.local"
+                headers["X-Title"] = "Dino ERP Document Parser"
             
             # Сформувати повідомлення користувача
             user_message_content = []
@@ -169,7 +175,6 @@ class OpenRouterParser:
                 "model": model_name,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-                "response_format": {"type": "json_object"},
                 "messages": [
                     {
                         "role": "system",
@@ -182,14 +187,25 @@ class OpenRouterParser:
                 ]
             }
             
+            # Додати response_format тільки для Groq з правильним синтаксисом
+            if is_groq:
+                request_data["response_format"] = {"type": "json_object"}
+            
             # Відправити запит до API
             _logger.info(f"Sending request to {api_base_url} with model {model_name}")
+            _logger.debug(f"Request headers: {headers}")
+            _logger.debug(f"Request data keys: {request_data.keys()}")
+            
             response = requests.post(
                 url=api_base_url,
                 headers=headers,
                 json=request_data,
                 timeout=120
             )
+            
+            # Логування помилки якщо є
+            if response.status_code != 200:
+                _logger.error(f"API Error {response.status_code}: {response.text}")
             
             response.raise_for_status()
             response_data = response.json()
@@ -276,7 +292,17 @@ class GoogleGeminiParser:
 
 {parsing_template}
 
-Поверніть ТІЛЬКИ JSON без додаткового тексту."""
+КРИТИЧНО ВАЖЛИВО:
+- Якщо надано зображення - уважно прочитайте ВСЬ текст з документа
+- Розпізнайте всі цифри, дати, назви товарів
+- Поверніть ТІЛЬКИ валідний JSON
+- БЕЗ додаткового тексту до або після JSON
+- БЕЗ markdown форматування (```json)
+- БЕЗ пояснень
+- Всі спеціальні символи в рядках мають бути правильно екрановані
+- Переноси рядків в значеннях замінюйте на пробіли
+
+Якщо зображення нечітке або пусте - поверніть JSON з пустими полями."""
 
         # Підготувати частини запиту
         parts = [{"text": system_prompt}]
@@ -285,14 +311,66 @@ class GoogleGeminiParser:
             parts.append({"text": f"\n\nТекст документа:\n{text}"})
         
         if image_data:
+            # Визначити MIME type
+            mime_type = "image/jpeg"  # За замовчуванням
+            
             if isinstance(image_data, bytes):
+                # Оптимізувати розмір зображення якщо надто велике
+                # Gemini підтримує до 20MB, але великі зображення обробляються довше
+                max_size_mb = 5  # Обмежимо 5MB для швидкості
+                if len(image_data) > max_size_mb * 1024 * 1024:
+                    _logger.info(f"Image size {len(image_data)/1024/1024:.2f}MB > {max_size_mb}MB, resizing...")
+                    try:
+                        from PIL import Image
+                        import io
+                        
+                        img = Image.open(io.BytesIO(image_data))
+                        # Зменшити до максимум 2048px по найбільшій стороні
+                        max_dimension = 2048
+                        if max(img.size) > max_dimension:
+                            ratio = max_dimension / max(img.size)
+                            new_size = tuple(int(dim * ratio) for dim in img.size)
+                            img = img.resize(new_size, Image.Resampling.LANCZOS)
+                            _logger.info(f"Resized to {new_size}")
+                        
+                        # Конвертувати в JPEG для економії місця
+                        output = io.BytesIO()
+                        if img.mode in ('RGBA', 'LA', 'P'):
+                            img = img.convert('RGB')
+                        img.save(output, format='JPEG', quality=85, optimize=True)
+                        image_data = output.getvalue()
+                        mime_type = "image/jpeg"
+                        _logger.info(f"Optimized image size: {len(image_data)/1024/1024:.2f}MB")
+                    except ImportError:
+                        _logger.warning("PIL not available, sending original image")
+                    except Exception as e:
+                        _logger.warning(f"Failed to optimize image: {e}, sending original")
+                
                 image_base64 = base64.b64encode(image_data).decode('utf-8')
+                # Визначити тип по magic bytes
+                if image_data[:4] == b'\x89PNG':
+                    mime_type = "image/png"
+                elif image_data[:3] == b'\xff\xd8\xff':
+                    mime_type = "image/jpeg"
+                elif image_data[:4] == b'RIFF' and image_data[8:12] == b'WEBP':
+                    mime_type = "image/webp"
             else:
                 image_base64 = image_data
+                # Спробувати визначити з початку base64
+                try:
+                    decoded_start = base64.b64decode(image_data[:20])
+                    if decoded_start[:4] == b'\x89PNG':
+                        mime_type = "image/png"
+                    elif decoded_start[:3] == b'\xff\xd8\xff':
+                        mime_type = "image/jpeg"
+                except:
+                    pass
+            
+            _logger.info(f"Image MIME type detected: {mime_type}, base64 length: {len(image_base64)}")
             
             parts.append({
                 "inline_data": {
-                    "mime_type": "image/png",
+                    "mime_type": mime_type,
                     "data": image_base64
                 }
             })
@@ -308,16 +386,47 @@ class GoogleGeminiParser:
         }
         
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            # Если model_name уже содержит "models/", используем его как есть
+            # Иначе добавляем префикс
+            if model_name.startswith('models/'):
+                full_model_path = model_name
+            else:
+                full_model_path = f"models/{model_name}"
             
-            _logger.info(f"Trying Gemini model: {model_name}")
+            url = f"https://generativelanguage.googleapis.com/v1beta/{full_model_path}:generateContent?key={api_key}"
             
-            response = requests.post(
-                url,
-                json=payload,
-                headers={'Content-Type': 'application/json'},
-                timeout=60
-            )
+            _logger.info(f"Trying Gemini model: {full_model_path}")
+            _logger.info(f"Gemini API URL: {url.replace(api_key, '***')}")
+            _logger.info(f"Request parts count: {len(parts)}")
+            for i, part in enumerate(parts):
+                if 'text' in part:
+                    _logger.info(f"  Part {i}: text ({len(part['text'])} chars)")
+                elif 'inline_data' in part:
+                    _logger.info(f"  Part {i}: image ({part['inline_data']['mime_type']}, {len(part['inline_data']['data'])} chars)")
+            
+            # Для изображений нужен больший timeout
+            timeout_seconds = 180 if image_data else 90  # Увеличено еще больше
+            _logger.info(f"Request timeout: {timeout_seconds}s")
+            
+            try:
+                response = requests.post(
+                    url,
+                    json=payload,
+                    headers={'Content-Type': 'application/json'},
+                    timeout=timeout_seconds
+                )
+            except requests.exceptions.Timeout:
+                error_msg = f"Таймаут {timeout_seconds}с. Спробуйте: 1) Зменшити розмір зображення 2) Використати текстовий ввід замість зображення 3) Використати іншу модель"
+                _logger.error(error_msg)
+                result['errors'].append(error_msg)
+                return result
+            except requests.exceptions.ConnectionError as e:
+                error_msg = f"Помилка з'єднання з Gemini API. Перевірте інтернет: {str(e)}"
+                _logger.error(error_msg)
+                result['errors'].append(error_msg)
+                return result
+            
+            _logger.info(f"Gemini response status: {response.status_code}")
             
             if response.status_code != 200:
                 error_msg = f"API Error: {response.status_code} - {response.text}"
@@ -327,19 +436,42 @@ class GoogleGeminiParser:
             
             response_data = response.json()
             
+            # Логування відповіді
+            _logger.info(f"Response has candidates: {'candidates' in response_data}")
+            if 'candidates' in response_data:
+                _logger.info(f"Candidates count: {len(response_data['candidates'])}")
+            
             # Витягти JSON
             if 'candidates' not in response_data:
+                _logger.error(f"No candidates in response. Response keys: {response_data.keys()}")
                 result['errors'].append('Немає candidates у відповіді')
                 return result
             
             candidate = response_data['candidates'][0]
             json_text = candidate['content']['parts'][0].get('text', '')
             
+            _logger.info(f"Extracted JSON length: {len(json_text)} chars")
+            _logger.debug(f"Raw JSON preview: {json_text[:200]}...")
+            
             # Зберегти оригінальний JSON
             result['raw_json'] = json_text
             
+            # Очистити JSON від control characters
+            # Замінити неекрановані переноси рядків та інші контрольні символи
+            import re
+            # Видалити control characters (коди 0-31 крім \t, \n, \r які повинні бути екрановані)
+            json_text_cleaned = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f]', '', json_text)
+            
+            # Якщо JSON обернутий в ```json ... ```, витягти
+            if '```json' in json_text_cleaned:
+                json_text_cleaned = json_text_cleaned.split('```json')[1].split('```')[0].strip()
+            elif '```' in json_text_cleaned:
+                json_text_cleaned = json_text_cleaned.split('```')[1].split('```')[0].strip()
+            
+            _logger.info(f"Cleaned JSON length: {len(json_text_cleaned)}")
+            
             # Парсинг JSON
-            parsed_data = json.loads(json_text)
+            parsed_data = json.loads(json_text_cleaned)
             
             # Повернути повний parsed JSON як є
             result['header'] = parsed_data.get('header', {})

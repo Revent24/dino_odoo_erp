@@ -16,10 +16,12 @@ class DinoParserAgent(models.Model):
     name = fields.Char('Agent Name', required=True, translate=True)
     sequence = fields.Integer('Sequence', default=10)
     active = fields.Boolean('Active', default=True)
+    is_default = fields.Boolean('Default Agent', default=False, help='Use this agent by default for new documents')
     
     agent_type = fields.Selection([
         ('regex_universal', 'Universal Regex Parser'),
         ('ai_openai_compatible', 'OpenAI-Compatible API (Universal)'),
+        ('ai_groq', 'Groq API (Llama Vision)'),
         ('ai_anthropic', 'Anthropic Claude'),
         ('ai_google', 'Google Gemini'),
     ], string='Agent Type', required=True, default='regex_universal')
@@ -38,10 +40,10 @@ class DinoParserAgent(models.Model):
     temperature = fields.Float('Temperature', default=0.0, help='AI temperature parameter (0.0-1.0)')
     max_tokens = fields.Integer('Max Tokens', default=4000, help='Maximum tokens for AI response')
     
-    # Лимиты API (для информации)
-    rate_limit_rpm = fields.Integer('Rate Limit (RPM)', help='Requests per minute limit', readonly=True)
-    rate_limit_tpm = fields.Integer('Rate Limit (TPM)', help='Tokens per minute limit', readonly=True)
-    rate_limit_rpd = fields.Integer('Rate Limit (RPD)', help='Requests per day limit', readonly=True)
+    # Лимиты API (можно редактировать для контроля использования)
+    rate_limit_rpm = fields.Integer('Rate Limit (RPM)', help='Requests per minute limit')
+    rate_limit_tpm = fields.Integer('Rate Limit (TPM)', help='Tokens per minute limit')
+    rate_limit_rpd = fields.Integer('Rate Limit (RPD)', help='Requests per day limit')
     
     # Статистика использования
     usage_count = fields.Integer('Usage Count', readonly=True, default=0)
@@ -52,6 +54,53 @@ class DinoParserAgent(models.Model):
     _sql_constraints = [
         ('name_unique', 'unique(name)', 'Agent name must be unique!'),
     ]
+    
+    def write(self, vals):
+        """
+        При установке is_default=True, автоматически снять с других.
+        Также проверять что default agent всегда активен.
+        """
+        from odoo.exceptions import UserError
+        
+        # Если устанавливаем is_default=True, автоматически делаем active=True
+        if vals.get('is_default'):
+            vals['active'] = True
+        
+        # Запретить деактивацию агента по умолчанию
+        if 'active' in vals and not vals['active']:
+            for record in self:
+                if record.is_default:
+                    raise UserError('Нельзя деактивировать агента по умолчанию. Сначала снимите флаг "Default Agent".')
+        
+        if vals.get('is_default'):
+            # Если устанавливаем is_default=True на нескольких записях,
+            # оставляем только первую
+            if len(self) > 1:
+                # При массовом изменении оставляем только первую запись
+                first_record = self[0]
+                other_records = self[1:]
+                # Снимаем флаг с остальных в текущем наборе
+                if other_records:
+                    super(DinoParserAgent, other_records).write({'is_default': False})
+                # Применяем к первой записи
+                result = super(DinoParserAgent, first_record).write(vals)
+                # Снять флаг со всех других агентов в БД
+                other_defaults = self.search([
+                    ('is_default', '=', True),
+                    ('id', '!=', first_record.id)
+                ])
+                if other_defaults:
+                    super(DinoParserAgent, other_defaults).write({'is_default': False})
+                return result
+            else:
+                # Для одной записи - обычная логика
+                other_defaults = self.search([
+                    ('is_default', '=', True),
+                    ('id', '!=', self.id)
+                ])
+                if other_defaults:
+                    super(DinoParserAgent, other_defaults).write({'is_default': False})
+        return super(DinoParserAgent, self).write(vals)
     
     @api.model
     def create_default_agent(self):
@@ -106,8 +155,8 @@ class DinoParserAgent(models.Model):
         from ..services.regex_parser_service import RegexParserService
         
         # Вызываем парсер в зависимости от типа агента
-        if self.agent_type in ['ai_openai_compatible', 'ai_google']:
-            # AI парсеры (OpenRouter, Gemini)
+        if self.agent_type in ['ai_openai_compatible', 'ai_google', 'ai_groq']:
+            # AI парсеры (OpenRouter, Gemini, Groq)
             result = AIParserService.parse(
                 text=text,
                 image_data=image_data,

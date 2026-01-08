@@ -223,8 +223,16 @@ class DocumentJSONService:
         if not doc_type:
             # Створити новий тип
             _logger.info(f"Creating new document type: {doc_type_name}")
+            # Генеруємо код з назви: перші літери кожного слова, верхній регістр
+            code_parts = []
+            for word in doc_type_name.split():
+                if word:
+                    code_parts.append(word[:3].upper())
+            code = '_'.join(code_parts) if code_parts else doc_type_name[:10].upper()
+            
             doc_type = DocumentType.create({
                 'name': doc_type_name,
+                'code': code,
             })
         
         return doc_type
@@ -322,8 +330,16 @@ class DocumentJSONService:
                     'name': line_data['name'],
                     'quantity': line_data.get('quantity', 1.0),
                     'price_untaxed': line_data.get('price_unit', 0.0),
-                    'price_tax': line_data.get('price_total', 0.0) / line_data.get('quantity', 1.0) if line_data.get('price_total') and line_data.get('quantity') else 0.0,
+                    'sequence': line_data.get('line_number', 0),
                 }
+                
+                # Розрахунок price_tax (ціна за одиницю З ПДВ)
+                price_unit = line_data.get('price_unit', 0.0)
+                tax_percent = line_data.get('tax_percent', 0)
+                if tax_percent > 0:
+                    spec_vals['price_tax'] = price_unit * (1 + tax_percent / 100)
+                else:
+                    spec_vals['price_tax'] = price_unit
                 
                 if supplier_nomenclature:
                     spec_vals['supplier_nomenclature_id'] = supplier_nomenclature.id

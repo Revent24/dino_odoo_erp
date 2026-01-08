@@ -19,6 +19,8 @@
         'documents/security/ir.model.access.csv',
         'documents/data/document_types.xml',
         'documents/data/parser_agents.xml',
+        'documents/data/groq_parser_agents.xml',
+        'documents/data/google_gemini_parser_agents.xml',
         'documents/wizard/import_specification_excel_views.xml',
         'documents/views/dino_document_type_views.xml',
         'documents/views/dino_parser_agent_views.xml',

@@ -119,7 +119,100 @@ Rate Limits:
 
 ---
 
-### 3. Anthropic Claude (В разработке)
+### 3. Groq API (Llama Vision)
+
+**Что это:**
+Groq - это высокопроизводительный хостинг для моделей с открытым исходным кодом, включая Llama-3.2-11b-vision-preview.
+
+**Когда использовать:**
+- Быстрая обработка документов (Vision модель)
+- Надёжный API с хорошей производительностью
+- Поддержка изображений и текста
+- Хорошее соотношение цена/качество
+
+#### Настройка Groq Llama Vision
+
+```
+Имя: Groq Llama 3.2 Vision (11B)
+Тип: Groq API (Llama Vision)
+
+API Configuration:
+├─ API Key: gsk-...  (получить на console.groq.com)
+├─ API Endpoint: https://api.groq.com/openai/v1/chat/completions
+└─ Model Name: llama-3.2-11b-vision-preview
+
+Generation Parameters:
+├─ Temperature: 0.1 (для точности)
+└─ Max Tokens: 4000
+
+Rate Limits (Free Tier):
+├─ RPM: 15
+├─ TPM: 15,000
+└─ RPD: 500
+```
+
+**Формат запроса:**
+```json
+{
+  "model": "llama-3.2-11b-vision-preview",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Оцифруй этот документ в JSON..."
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/jpeg;base64,BASE64_КОД_КАРТИНКИ"
+          }
+        }
+      ]
+    }
+  ],
+  "temperature": 0.1,
+  "response_format": { "type": "json_object" }
+}
+```
+
+**Особенности:**
+- ✅ OpenAI-compatible API (легко интегрировать)
+- ✅ Поддержка `response_format: json_object`
+- ✅ Хорошо работает с украинским языком
+- ⚠️ Изображения: макс. 4MB, до 2000x2000 px
+- ⚠️ Может "глючить" на очень мелком шрифте
+
+**Как получить API ключ:**
+1. Зарегистрироваться на https://console.groq.com
+2. Перейти в раздел API Keys
+3. Создать новый ключ (начинается с `gsk-`)
+4. Скопировать и вставить в настройки агента
+
+**Стоимость (Free Tier):**
+- Бесплатно до 500 запросов в день
+- После исчерпания - нужен платный план
+
+**Пример интеграции в Python:**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key="gsk_..."
+)
+
+response = client.chat.completions.create(
+    model="llama-3.2-11b-vision-preview",
+    messages=[...],
+    temperature=0.1
+)
+```
+
+---
+
+### 4. Anthropic Claude (В разработке)
 
 **Когда будет доступно:**
 - Прямая интеграция с Anthropic API

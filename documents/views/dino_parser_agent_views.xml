@@ -10,14 +10,35 @@
             <field name="arch" type="xml">
                 <list string="Parser Agents" 
                       default_order="sequence, name"
+                      decoration-bf="is_default"
                       decoration-muted="not active">
                     <field name="sequence" widget="handle"/>
+                    <field name="is_default" readonly="1"/>
                     <field name="name"/>
                     <field name="agent_type"/>
-                    <field name="active" widget="boolean_toggle"/>
+                    <field name="active" widget="boolean_toggle" readonly="is_default"/>
                     <field name="usage_count"/>
                     <field name="last_used_date" optional="hide"/>
                 </list>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             SEARCH VIEW: Поиск и фильтры для агентов парсинга
+             ============================================== -->
+        <record id="view_dino_parser_agent_search" model="ir.ui.view">
+            <field name="name">dino.parser.agent.search</field>
+            <field name="model">dino.parser.agent</field>
+            <field name="arch" type="xml">
+                <search string="Parser Agents">
+                    <field name="name"/>
+                    <field name="agent_type"/>
+                    <separator/>
+                    <filter string="Active" name="filter_active" domain="[('active', '=', True)]"/>
+                    <filter string="Inactive" name="filter_inactive" domain="[('active', '=', False)]"/>
+                    <separator/>
+                    <filter string="All" name="filter_all" domain="[]"/>
+                </search>
             </field>
         </record>
 
@@ -29,15 +50,25 @@
             <field name="model">dino.parser.agent</field>
             <field name="arch" type="xml">
                 <form string="Parser Agent">
+                    <div class="d-flex gap-4 mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="active" class="mb-0">Active:</label>
+                            <field name="active" widget="boolean_toggle" nolabel="1" readonly="is_default"/>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <label for="is_default" class="mb-0">Default Agent:</label>
+                            <field name="is_default" widget="boolean_toggle" nolabel="1"/>
+                        </div>
+                    </div>
                     <sheet>
-                        <div class="oe_button_box" name="button_box">
-                            <field name="active" widget="boolean_button" 
-                                   options="{'terminology': 'active'}"/>
+                        <div class="oe_title">
+                            <h1>
+                            <field name="name"/>
+                            </h1>
                         </div>
                         
                         <group>
                             <group>
-                                <field name="name"/>
                                 <field name="agent_type"/>
                                 <field name="sequence"/>
                                 <field name="fallback_agent_id" domain="[('id', '!=', id)]"/>
@@ -50,65 +81,42 @@
                             </group>
                         </group>
                         
-                        <notebook>
-                            <page string="Description" name="description">
-                                <field name="description" placeholder="Описание агента и его возможностей..."/>
-                            </page>
-                            
-                            <page string="API Settings" name="api_settings" 
-                                  invisible="agent_type not in ['ai_openai_compatible', 'ai_anthropic', 'ai_google']">
+                        <notebook>                          
+                            <page  string="API Configuration" name="api_settings" 
+                                  invisible="agent_type not in ['ai_openai_compatible', 'ai_groq', 'ai_anthropic', 'ai_google']">
                                 <group>
-                                    <group string="API Configuration">
+                                    <group>
                                         <field name="api_key" password="True"/>
                                         <field name="api_endpoint" placeholder="https://api.openai.com/v1/chat/completions"/>
                                         <field name="model_name" placeholder="gpt-4o-mini"/>
-                                    </group>
-                                    <group string="Generation Parameters">
                                         <field name="temperature"/>
                                         <field name="max_tokens"/>
-                                    </group>
-                                </group>
-                                
-                                <group string="Rate Limits (Read-only)">
-                                    <group>
-                                        <field name="rate_limit_rpm" readonly="1"/>
-                                        <field name="rate_limit_tpm" readonly="1"/>
+                                        <field name="rate_limit_rpm"/>
+                                        <field name="rate_limit_tpm"/>
+                                        <field name="rate_limit_rpd"/>
                                     </group>
                                     <group>
-                                        <field name="rate_limit_rpd" readonly="1"/>
+                                        <field name="description" placeholder="Описание агента и его возможностей..."/>
                                     </group>
                                 </group>
-                                
-                                <group>
-                                    <div class="alert alert-info" role="alert">
-                                        <strong>📊 Rate Limits:</strong>
-                                        <p style="margin: 5px 0 0 0;">
-                                            Лимиты API зависят от вашего тарифного плана (Tier). Заполните эти поля вручную 
-                                            для информации. Значения можно найти в личном кабинете API провайдера.
-                                        </p>
-                                    </div>
-                                    <div class="alert alert-warning" role="alert">
+
+
+                                <div class="alert alert-warning" role="alert">
                                         <strong>⚠️ Безопасность:</strong>
                                         <p style="margin: 5px 0 0 0;">
                                             API ключи хранятся в базе данных. Убедитесь, что доступ к настройкам агентов 
                                             имеют только доверенные пользователи. Рекомендуется использовать ключи 
                                             с ограниченными правами и квотами.
                                         </p>
-                                    </div>
-                                </group>
-                            </page>
-                            
-                            <page string="JSON Schema" name="json_schema">
-                                <group>
-                                    <div class="alert alert-success" role="alert">
+                                </div>
+                                 <div class="alert alert-success" role="alert">
                                         <strong>✅ JSON Schema:</strong>
                                         <p style="margin: 5px 0 0 0;">
-                                            JSON схема загружается автоматически из файла 
-                                            <code>documents/services/json_schema_template.json</code>.
+                                            JSON схема ипромтзагружается автоматически из файла 
+                                            <code>documents\services\ai_parsing_template.md</code>.
                                             Все агенты используют единый шаблон. Для изменения схемы отредактируйте этот файл.
                                         </p>
-                                    </div>
-                                </group>
+                                </div>                      
                             </page>
                         </notebook>
                     </sheet>
@@ -123,6 +131,8 @@
             <field name="name">Parser Agents</field>
             <field name="res_model">dino.parser.agent</field>
             <field name="view_mode">list,form</field>
+            <field name="domain">[]</field>
+            <field name="context">{'active_test': False}</field>
             <field name="help" type="html">
                 <p class="o_view_nocontent_smiling_face">
                     Создайте первого агента парсинга
