@@ -56,7 +56,7 @@ class DinoParserAgent(models.Model):
     ]
     
     def write(self, vals):
-        """
+       """
         При установке is_default=True, автоматически снять с других.
         Также проверять что default agent всегда активен.
         """
