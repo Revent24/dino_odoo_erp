@@ -307,7 +307,13 @@ class GoogleGeminiParser:
         # Підготувати частини запиту
         parts = [{"text": system_prompt}]
         
+        _logger.info(f"📝 System prompt length: {len(system_prompt)} chars")
+        
         if text:
+            _logger.info(f"📄 Adding text input: {len(text)} chars")
+            # Перевірка: якщо текст надто великий, попередити
+            if len(text) > 50000:
+                _logger.warning(f"⚠️ Text is very large ({len(text)} chars). This may cause timeout!")
             parts.append({"text": f"\n\nТекст документа:\n{text}"})
         
         if image_data:
@@ -398,15 +404,34 @@ class GoogleGeminiParser:
             _logger.info(f"Trying Gemini model: {full_model_path}")
             _logger.info(f"Gemini API URL: {url.replace(api_key, '***')}")
             _logger.info(f"Request parts count: {len(parts)}")
+            
+            total_text_length = 0
             for i, part in enumerate(parts):
                 if 'text' in part:
-                    _logger.info(f"  Part {i}: text ({len(part['text'])} chars)")
+                    text_len = len(part['text'])
+                    total_text_length += text_len
+                    _logger.info(f"  Part {i}: text ({text_len} chars)")
                 elif 'inline_data' in part:
                     _logger.info(f"  Part {i}: image ({part['inline_data']['mime_type']}, {len(part['inline_data']['data'])} chars)")
             
-            # Для изображений нужен больший timeout
-            timeout_seconds = 180 if image_data else 90  # Увеличено еще больше
-            _logger.info(f"Request timeout: {timeout_seconds}s")
+            # Адаптивный таймаут в зависимости от размера данных
+            if image_data:
+                # Для изображений - минимум 3 минуты, добавляем время на каждый MB
+                image_size_mb = len(image_base64) / (1024 * 1024)
+                timeout_seconds = max(180, int(180 + image_size_mb * 30))
+                _logger.info(f"Image mode: {image_size_mb:.2f}MB, timeout: {timeout_seconds}s")
+            else:
+                # Для текста - минимум 2 минуты, добавляем время на каждые 1000 символов
+                base_timeout = 120
+                text_factor = total_text_length / 1000 * 5  # 5 секунд на каждую 1000 символов
+                timeout_seconds = max(base_timeout, int(base_timeout + text_factor))
+                _logger.info(f"Text mode: {total_text_length} chars, timeout: {timeout_seconds}s")
+            
+            _logger.info(f"⏱️ Starting Gemini request with timeout {timeout_seconds}s...")
+            _logger.info(f"⏱️ Starting Gemini request with timeout {timeout_seconds}s...")
+            
+            import time
+            start_time = time.time()
             
             try:
                 response = requests.post(
@@ -415,13 +440,16 @@ class GoogleGeminiParser:
                     headers={'Content-Type': 'application/json'},
                     timeout=timeout_seconds
                 )
+                elapsed_time = time.time() - start_time
+                _logger.info(f"✅ Gemini responded in {elapsed_time:.2f}s")
             except requests.exceptions.Timeout:
-                error_msg = f"Таймаут {timeout_seconds}с. Спробуйте: 1) Зменшити розмір зображення 2) Використати текстовий ввід замість зображення 3) Використати іншу модель"
+                elapsed_time = time.time() - start_time
+                error_msg = f"⏱️ Таймаут після {elapsed_time:.1f}с (ліміт {timeout_seconds}с). Google Gemini не встиг відповісти. Можливі причини:\n1) Великий обсяг тексту (ви надіслали {total_text_length:,} символів)\n2) Проблеми з Google API (перевантаження серверів)\n3) Повільне інтернет-з'єднання\n\nРішення: 1) Спробуйте коротший текст 2) Спробуйте іншу модель (наприклад Groq Llama) 3) Почекайте і повторіть"
                 _logger.error(error_msg)
                 result['errors'].append(error_msg)
                 return result
             except requests.exceptions.ConnectionError as e:
-                error_msg = f"Помилка з'єднання з Gemini API. Перевірте інтернет: {str(e)}"
+                error_msg = f"🌐 Помилка з'єднання з Gemini API. Перевірте інтернет: {str(e)}"
                 _logger.error(error_msg)
                 result['errors'].append(error_msg)
                 return result
