@@ -43,6 +43,7 @@
         'stock/views/dino_nomenclature_views.xml',
         'stock/views/dino_nomenclature_quick_create.xml',
         'stock/views/dino_component_category_views.xml',
+        'stock/views/dino_uom_views.xml',
         'stock/data/dino_uom_data.xml',
         'stock/security/ir.model.access.csv',
         'finance/security/ir.model.access.csv',

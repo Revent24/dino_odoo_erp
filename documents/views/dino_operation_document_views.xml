@@ -47,6 +47,7 @@
                                         <field name="supplier_nomenclature_id" string="Supplier Item" context="{'default_partner_id': parent.partner_id}" options="{'no_open': True}"/>
                                         <field name="nomenclature_id" 
                                                string="Stock Item"
+                                               optional="hide"
                                                widget="many2one"
                                                options="{'no_quick_create': True}"
                                                context="{
@@ -55,10 +56,16 @@
                                                    'form_view_ref': 'dino_erp.view_nomenclature_quick_create_form'
                                                }"/>
                                         <field name="quantity" string="Qty"/>
-                                        <field name="uom_id" string="Unit"/>
+                                        <field name="dino_uom_id" string="Unit"/>
+                                        <field name="article" string="Article" optional="hide"/>
+                                        <field name="ukt_zed" string="UKT ZED" optional="hide"/>
                                         <field name="price_untaxed" string="Price"/>
-                                        <field name="price_tax" string="Price w/Tax"/>
-                                        <field name="amount_total" string="Amount w/Tax"/>
+                                        <field name="price_tax" string="Price w/Tax" optional="hide"/>
+                                        <field name="amount_untaxed" string="Subtotal" optional="hide"/>
+                                        <field name="amount_tax" string="Tax"/>
+                                        <field name="vat_rate" string="VAT %" optional="hide" readonly="1"/>
+                                        <field name="amount_total" string="Total"/>
+                                        <field name="description" string="Notes" optional="hide"/>
                                     </list>
                                 </field>
                             </page>
@@ -259,7 +266,7 @@
                     <field name="partner_id" string="Partner"/>
                     <field name="name" string="Supplier Item Name"/>
                     <field name="quantity" string="Quantity"/>
-                    <field name="uom_id" string="Unit"/>
+                    <field name="dino_uom_id" string="Unit"/>
                     <field name="price_untaxed" string="Price w/o VAT" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                     <field name="price_tax" string="Price with VAT" widget="monetary" options="{'currency_field': 'currency_id'}"/>
                     <field name="currency_id" column_invisible="True"/>

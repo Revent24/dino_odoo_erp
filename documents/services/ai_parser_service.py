@@ -40,6 +40,225 @@ class AIParserService:
             return "Поверни JSON з полями: header, lines, metadata"
     
     @staticmethod
+    def _validate_and_fix_math(result):
+        """
+        Перевірити і виправити математику в результаті парсингу.
+        
+        НОВИЙ АЛГОРИТМ (2026-01-09):
+        1. Розрахунок ставки ПДВ з підсумків документа (ОДНА для всього документа)
+        2. Заповнення відсутніх полів у рядках (price_unit, price_subtotal, price_total)
+        3. Округлення: 0.001 для розрахунків → 0.01 для запису
+        4. Розподіл різниці округлення пропорційно (підсумок документа = ІСТИНА)
+        5. Фінальна валідація
+        
+        :param result: dict з даними від AI
+        :return: result з виправленою математикою + список попереджень
+        """
+        warnings = []
+        
+        try:
+            header = result.get('header', {})
+            lines = result.get('lines', [])
+            
+            if not lines:
+                return result, warnings
+            
+            # ========================
+            # ЕТАП 1: Розрахунок ставки ПДВ з підсумків документа
+            # ========================
+            tax_percent = 0.0
+            
+            amount_untaxed = header.get('amount_untaxed', 0)
+            amount_tax = header.get('amount_tax', 0)
+            amount_total = header.get('amount_total', 0)
+            
+            # Спосіб 1: З amount_tax та amount_untaxed
+            if amount_untaxed and amount_tax:
+                tax_percent = round((amount_tax / amount_untaxed) * 100, 2)
+                _logger.info(f"📊 Ставка ПДВ розрахована з підсумків: {tax_percent}%")
+            
+            # Спосіб 2: З різниці amount_total - amount_untaxed
+            elif amount_total and amount_untaxed:
+                amount_tax = amount_total - amount_untaxed
+                header['amount_tax'] = round(amount_tax, 2)
+                tax_percent = round((amount_tax / amount_untaxed) * 100, 2)
+                _logger.info(f"📊 Ставка ПДВ розрахована з різниці: {tax_percent}%")
+                warnings.append(f"Header: Розраховано amount_tax = {amount_tax:.2f}")
+            
+            # Спосіб 3: Якщо немає підсумків, припустити стандартну ставку 20%
+            elif amount_total and not amount_untaxed:
+                tax_percent = 20.0
+                amount_untaxed = round(amount_total / 1.20, 2)
+                amount_tax = amount_total - amount_untaxed
+                header['amount_untaxed'] = amount_untaxed
+                header['amount_tax'] = amount_tax
+                _logger.warning(f"⚠️ Підсумок БЕЗ ПДВ відсутній, припускаємо ставку 20%")
+                warnings.append(f"Header: Припущено ставку ПДВ 20%, розраховано amount_untaxed = {amount_untaxed:.2f}")
+            
+            header['tax_percent'] = tax_percent
+            
+            # ========================
+            # ЕТАП 2: Заповнення відсутніх полів у рядках
+            # ========================
+            for idx, line in enumerate(lines, 1):
+                qty = line.get('quantity', 0)
+                price_unit = line.get('price_unit')
+                price_unit_with_tax = line.get('price_unit_with_tax')
+                price_subtotal = line.get('price_subtotal')
+                price_total = line.get('price_total')
+                
+                # Округлення: внутрішні розрахунки до 3 знаків, запис до 2
+                
+                # СЦЕНАРІЙ 1: Є price_unit БЕЗ ПДВ
+                if price_unit and qty:
+                    # Розрахувати price_subtotal
+                    if not price_subtotal:
+                        calc_subtotal = qty * price_unit
+                        line['price_subtotal'] = round(calc_subtotal, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_subtotal = {line['price_subtotal']:.2f}")
+                    
+                    # Розрахувати price_unit_with_tax
+                    if not price_unit_with_tax and tax_percent:
+                        calc_price_with_tax = price_unit * (1 + tax_percent / 100)
+                        line['price_unit_with_tax'] = round(calc_price_with_tax, 2)
+                    
+                    # Розрахувати price_total
+                    if not price_total:
+                        calc_total = line.get('price_subtotal', 0) * (1 + tax_percent / 100)
+                        line['price_total'] = round(calc_total, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_total = {line['price_total']:.2f}")
+                
+                # СЦЕНАРІЙ 2: Є тільки price_unit_with_tax (З ПДВ)
+                elif price_unit_with_tax and qty and not price_unit:
+                    # Розрахувати price_unit БЕЗ ПДВ
+                    if tax_percent:
+                        calc_price_unit = price_unit_with_tax / (1 + tax_percent / 100)
+                        line['price_unit'] = round(calc_price_unit, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_unit = {line['price_unit']:.2f}")
+                    
+                    # Розрахувати price_total
+                    if not price_total:
+                        calc_total = qty * price_unit_with_tax
+                        line['price_total'] = round(calc_total, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_total = {line['price_total']:.2f}")
+                    
+                    # Розрахувати price_subtotal
+                    if not price_subtotal and tax_percent:
+                        calc_subtotal = line['price_total'] / (1 + tax_percent / 100)
+                        line['price_subtotal'] = round(calc_subtotal, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_subtotal = {line['price_subtotal']:.2f}")
+                
+                # СЦЕНАРІЙ 3: Є тільки price_subtotal
+                elif price_subtotal and qty and not price_unit:
+                    # Зворотній розрахунок price_unit
+                    calc_price_unit = price_subtotal / qty
+                    line['price_unit'] = round(calc_price_unit, 2)
+                    warnings.append(f"Рядок {idx}: Розраховано price_unit = {line['price_unit']:.2f} (зворотно)")
+                    
+                    # Розрахувати price_total
+                    if not price_total:
+                        calc_total = price_subtotal * (1 + tax_percent / 100)
+                        line['price_total'] = round(calc_total, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_total = {line['price_total']:.2f}")
+                
+                # СЦЕНАРІЙ 4: Є тільки price_total
+                elif price_total and qty and not price_subtotal:
+                    # Розрахувати price_subtotal
+                    if tax_percent:
+                        calc_subtotal = price_total / (1 + tax_percent / 100)
+                        line['price_subtotal'] = round(calc_subtotal, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_subtotal = {line['price_subtotal']:.2f}")
+                    
+                    # Розрахувати price_unit
+                    if not price_unit and line.get('price_subtotal'):
+                        calc_price_unit = line['price_subtotal'] / qty
+                        line['price_unit'] = round(calc_price_unit, 2)
+                        warnings.append(f"Рядок {idx}: Розраховано price_unit = {line['price_unit']:.2f}")
+            
+            # ========================
+            # ЕТАП 3: Розподіл різниці округлення
+            # ========================
+            
+            # Якщо підсумки не задані в header, порахувати їх
+            if not amount_untaxed or not amount_total:
+                amount_untaxed = sum(l.get('price_subtotal', 0) for l in lines)
+                amount_total = sum(l.get('price_total', 0) for l in lines)
+                header['amount_untaxed'] = round(amount_untaxed, 2)
+                header['amount_total'] = round(amount_total, 2)
+                header['amount_tax'] = round(amount_total - amount_untaxed, 2)
+                warnings.append(f"Header: Розраховано підсумки з рядків")
+                return result, warnings
+            
+            # Порахувати суму всіх рядків
+            lines_subtotal = sum(l.get('price_subtotal', 0) for l in lines)
+            lines_total = sum(l.get('price_total', 0) for l in lines)
+            
+            # Різниця між документом і сумою рядків
+            difference_untaxed = amount_untaxed - lines_subtotal
+            difference_total = amount_total - lines_total
+            
+            _logger.info(f"💰 Сума рядків: {lines_subtotal:.2f} (без ПДВ), {lines_total:.2f} (з ПДВ)")
+            _logger.info(f"💰 Документ:     {amount_untaxed:.2f} (без ПДВ), {amount_total:.2f} (з ПДВ)")
+            _logger.info(f"💰 Різниця:      {difference_untaxed:.2f} (без ПДВ), {difference_total:.2f} (з ПДВ)")
+            
+            # Якщо різниця більше 1 копійки → РОЗПОДІЛИТИ
+            if abs(difference_untaxed) > 0.01:
+                _logger.warning(f"⚠️ Різниця округлення: {difference_untaxed:.2f} грн → розподіляємо")
+                warnings.append(f"🔄 Розподіл різниці округлення: {difference_untaxed:.2f} грн")
+                
+                # Розподілити пропорційно по рядках
+                for idx, line in enumerate(lines, 1):
+                    if lines_subtotal > 0:
+                        weight = line.get('price_subtotal', 0) / lines_subtotal
+                        adjustment = round(difference_untaxed * weight, 3)  # 3 знаки для точності
+                        
+                        old_subtotal = line.get('price_subtotal', 0)
+                        new_subtotal = round(old_subtotal + adjustment, 2)
+                        line['price_subtotal'] = new_subtotal
+                        
+                        # Перерахувати price_total
+                        line['price_total'] = round(new_subtotal * (1 + tax_percent / 100), 2)
+                        
+                        if abs(adjustment) > 0.001:
+                            warnings.append(f"  Рядок {idx}: {old_subtotal:.2f} → {new_subtotal:.2f} (коригування: {adjustment:+.3f})")
+                
+                # Остання перевірка (може залишитись 0.01 через округлення)
+                final_subtotal = sum(l.get('price_subtotal', 0) for l in lines)
+                final_diff = amount_untaxed - final_subtotal
+                
+                if abs(final_diff) >= 0.01:
+                    # Додати/відняти останню копійку до найбільшого рядка
+                    max_line = max(lines, key=lambda l: l.get('price_subtotal', 0))
+                    max_line['price_subtotal'] = round(max_line['price_subtotal'] + final_diff, 2)
+                    max_line['price_total'] = round(max_line['price_subtotal'] * (1 + tax_percent / 100), 2)
+                    warnings.append(f"  📌 Остання копійка ({final_diff:+.2f}) додана до найбільшого рядка")
+            
+            # ========================
+            # ЕТАП 4: Фінальна валідація
+            # ========================
+            final_untaxed = sum(l.get('price_subtotal', 0) for l in lines)
+            final_total = sum(l.get('price_total', 0) for l in lines)
+            
+            # Гарантувати що суми співпадають
+            diff_check = abs(final_untaxed - amount_untaxed)
+            if diff_check > 0.01:
+                _logger.error(f"❌ КРИТИЧНА ПОМИЛКА: Сума рядків ({final_untaxed:.2f}) не дорівнює підсумку ({amount_untaxed:.2f}), різниця: {diff_check:.2f}")
+                warnings.append(f"❌ ПОМИЛКА: Не вдалось точно розподілити різницю! Залишок: {diff_check:.2f}")
+            else:
+                _logger.info(f"✅ Математична валідація успішна: {final_untaxed:.2f} === {amount_untaxed:.2f}")
+            
+            # Перевірка суми з ПДВ (можуть бути невеликі розбіжності через округлення кожного рядка)
+            diff_total_check = abs(final_total - amount_total)
+            if diff_total_check > 0.05:
+                warnings.append(f"⚠️ Сума з ПДВ відрізняється на {diff_total_check:.2f} грн (допустимо до 0.05)")
+        
+        except Exception as e:
+            warnings.append(f"❌ Помилка валідації математики: {e}")
+            _logger.error(f"Math validation error: {e}", exc_info=True)
+        
+        return result, warnings
+    
+    @staticmethod
     def parse(text=None, image_data=None, agent_type='ai_openai_compatible', partner_name=None, **kwargs):
         """
         Парсинг тексту або зображення через AI.
@@ -89,10 +308,11 @@ class OpenRouterParser:
             'success': False,
             'document': {},
             'supplier': {},
-            'lines': [],
+            'lines': [],  # Кожен line повинен мати 'barcodes': []
             'errors': [],
             'tokens_used': 0,
             'cost': 0.0,
+            'barcodes': []  # Загальний список всіх штрихкодів з документа
         }
         
         try:
@@ -111,22 +331,24 @@ class OpenRouterParser:
                 result['errors'].append('Потрібен текст або зображення')
                 return result
             
-            # Завантажити шаблон парсингу
+            # Завантажити шаблон парсингу з файлу
             parsing_template = AIParserService._load_parsing_template()
             
-            # Системний промпт
-            system_prompt = f"""Ти - експерт з розпізнавання українських бухгалтерських документів.
-Твоє завдання: витягти дані ТІЛЬКИ з наданого документа і повернути строгий JSON.
+            # Додати список одиниць виміру якщо передано
+            units_str = ""
+            units_list = kwargs.get('units_list', [])
+            if units_list:
+                # Обмежити до 50 одиниць для економії токенів
+                units_display = units_list[:50]
+                units_str = f"\n\n📦 Доступні одиниці виміру: {', '.join(units_display)}"
+                if len(units_list) > 50:
+                    units_str += f" (та ще {len(units_list)-50}...)"
+            
+            # Системний промпт - МІНІМАЛЬНА обгортка
+            system_prompt = f"""{parsing_template}{units_str}
 
-⚠️ КРИТИЧНО ВАЖЛИВО:
-- НЕ ВИГАДУЙ дані - якщо інформації немає в документі, повертай null
-- Використовуй ТІЛЬКИ ті дані, які бачиш на зображенні/в тексті
-- НЕ підставляй дані з пам'яті або з попередніх документів
-- Якщо сумніваєшся - краще повернути null
-
-{parsing_template}
-
-Поверни ТІЛЬКИ JSON, без додаткового тексту."""
+Поверни ТІЛЬКИ валідний JSON. Мова: українська.
+(Markdown форматування ```json дозволено - воно буде автоматично очищене)"""
             
             # Підготувати запит
             # Перевірка чи це Groq API
@@ -222,6 +444,17 @@ class OpenRouterParser:
             result['lines'] = parsed_json.get('lines', [])
             result['metadata'] = parsed_json.get('metadata', {})
             
+            # Перевірити і виправити математику (AI тільки витягує дані, Python перевіряє)
+            result, math_warnings = AIParserService._validate_and_fix_math(result)
+            if math_warnings:
+                _logger.info(f"📊 Math validation: {len(math_warnings)} adjustments")
+                for warning in math_warnings:
+                    _logger.debug(f"  {warning}")
+                # Додати попередження в metadata
+                if 'metadata' not in result:
+                    result['metadata'] = {}
+                result['metadata']['math_warnings'] = math_warnings
+            
             # Статистика токенів
             if 'usage' in response_data:
                 result['tokens_used'] = response_data['usage'].get('total_tokens', 0)
@@ -266,10 +499,11 @@ class GoogleGeminiParser:
             'success': False,
             'document': {},
             'supplier': {},
-            'lines': [],
+            'lines': [],  # Кожен line повинен мати 'barcodes': []
             'errors': [],
             'tokens_used': 0,
-            'cost': 0.0
+            'cost': 0.0,
+            'barcodes': []  # Загальний список всіх штрихкодів з документа
         }
         
         # Отримати параметри
@@ -284,25 +518,24 @@ class GoogleGeminiParser:
         
         model_name = kwargs.get('model_name', 'gemini-2.0-flash-exp')
         
-        # Завантажити шаблон парсингу
+        # Завантажити шаблон парсингу з файлу
         parsing_template = AIParserService._load_parsing_template()
         
-        # Системний промпт
-        system_prompt = f"""Ви - експерт з розпізнавання українських бухгалтерських документів.
+        # Додати список одиниць виміру якщо передано
+        units_str = ""
+        units_list = kwargs.get('units_list', [])
+        if units_list:
+            # Обмежити до 50 одиниць для економії токенів
+            units_display = units_list[:50]
+            units_str = f"\n\n📦 Доступні одиниці виміру: {', '.join(units_display)}"
+            if len(units_list) > 50:
+                units_str += f" (та ще {len(units_list)-50}...)"
+        
+        # Системний промпт - МІНІМАЛЬНА обгортка
+        system_prompt = f"""{parsing_template}{units_str}
 
-{parsing_template}
-
-КРИТИЧНО ВАЖЛИВО:
-- Якщо надано зображення - уважно прочитайте ВСЬ текст з документа
-- Розпізнайте всі цифри, дати, назви товарів
-- Поверніть ТІЛЬКИ валідний JSON
-- БЕЗ додаткового тексту до або після JSON
-- БЕЗ markdown форматування (```json)
-- БЕЗ пояснень
-- Всі спеціальні символи в рядках мають бути правильно екрановані
-- Переноси рядків в значеннях замінюйте на пробіли
-
-Якщо зображення нечітке або пусте - поверніть JSON з пустими полями."""
+Поверни ТІЛЬКИ валідний JSON. Мова: українська.
+(Markdown форматування ```json дозволено - воно буде автоматично очищене)"""
 
         # Підготувати частини запиту
         parts = [{"text": system_prompt}]
@@ -405,29 +638,34 @@ class GoogleGeminiParser:
             _logger.info(f"Gemini API URL: {url.replace(api_key, '***')}")
             _logger.info(f"Request parts count: {len(parts)}")
             
+            # Підраховуємо ТІЛЬКИ текст документа (без системного промпту)
+            document_text_length = len(text) if text else 0
+            _logger.info(f"📄 Document text length: {document_text_length} chars")
+            
             total_text_length = 0
             for i, part in enumerate(parts):
                 if 'text' in part:
                     text_len = len(part['text'])
                     total_text_length += text_len
-                    _logger.info(f"  Part {i}: text ({text_len} chars)")
+                    part_preview = part['text'][:50].replace('\n', ' ')
+                    _logger.info(f"  Part {i}: text ({text_len} chars): {part_preview}...")
                 elif 'inline_data' in part:
                     _logger.info(f"  Part {i}: image ({part['inline_data']['mime_type']}, {len(part['inline_data']['data'])} chars)")
             
             # Адаптивный таймаут в зависимости от размера данных
             if image_data:
-                # Для изображений - минимум 3 минуты, добавляем время на каждый MB
+                # Для изображений - от 60 до 120 секунд в зависимости от размера
                 image_size_mb = len(image_base64) / (1024 * 1024)
-                timeout_seconds = max(180, int(180 + image_size_mb * 30))
-                _logger.info(f"Image mode: {image_size_mb:.2f}MB, timeout: {timeout_seconds}s")
+                timeout_seconds = min(120, max(60, int(60 + image_size_mb * 20)))
+                _logger.info(f"📷 Image mode: {image_size_mb:.2f}MB, timeout: {timeout_seconds}s")
             else:
-                # Для текста - минимум 2 минуты, добавляем время на каждые 1000 символов
-                base_timeout = 120
-                text_factor = total_text_length / 1000 * 5  # 5 секунд на каждую 1000 символов
-                timeout_seconds = max(base_timeout, int(base_timeout + text_factor))
-                _logger.info(f"Text mode: {total_text_length} chars, timeout: {timeout_seconds}s")
+                # Для текста - базовий таймаут 60с (було 30с, але Gemini може "думати" довше)
+                base_timeout = 60
+                # Використовуємо document_text_length замість total_text_length
+                text_factor = min(60, document_text_length / 1000 * 3)  # 3 секунди на кожну 1000 символів, макс +60с
+                timeout_seconds = int(base_timeout + text_factor)
+                _logger.info(f"📝 Text mode: document={document_text_length} chars, total_request={total_text_length} chars, timeout: {timeout_seconds}s")
             
-            _logger.info(f"⏱️ Starting Gemini request with timeout {timeout_seconds}s...")
             _logger.info(f"⏱️ Starting Gemini request with timeout {timeout_seconds}s...")
             
             import time
@@ -444,7 +682,7 @@ class GoogleGeminiParser:
                 _logger.info(f"✅ Gemini responded in {elapsed_time:.2f}s")
             except requests.exceptions.Timeout:
                 elapsed_time = time.time() - start_time
-                error_msg = f"⏱️ Таймаут після {elapsed_time:.1f}с (ліміт {timeout_seconds}с). Google Gemini не встиг відповісти. Можливі причини:\n1) Великий обсяг тексту (ви надіслали {total_text_length:,} символів)\n2) Проблеми з Google API (перевантаження серверів)\n3) Повільне інтернет-з'єднання\n\nРішення: 1) Спробуйте коротший текст 2) Спробуйте іншу модель (наприклад Groq Llama) 3) Почекайте і повторіть"
+                error_msg = f"⏱️ Таймаут після {elapsed_time:.1f}с (ліміт {timeout_seconds}с).\n\nGoogle Gemini не встиг відповісти.\nДокумент: {document_text_length:,} символів\nПовний запит: {total_text_length:,} символів\n\n💡 Рекомендації:\n1. Перевірте з'єднання з інтернетом\n2. Спробуйте ще раз (можливо, сервер Google перевантажений)\n3. Використайте fallback агента (налаштуйте в Parser Agent)\n4. Спробуйте інший агент: Groq Llama або OpenRouter Gemini"
                 _logger.error(error_msg)
                 result['errors'].append(error_msg)
                 return result
@@ -457,7 +695,8 @@ class GoogleGeminiParser:
             _logger.info(f"Gemini response status: {response.status_code}")
             
             if response.status_code != 200:
-                error_msg = f"API Error: {response.status_code} - {response.text}"
+                error_text = response.text[:500]  # Обмежуємо довжину тексту помилки
+                error_msg = f"❌ Google Gemini API Error {response.status_code}\n\n{error_text}\n\n💡 Можливі причини:\n• Неправильний API ключ\n• Вичерпано ліміт запитів (15 req/min або 1500 req/day)\n• Модель '{model_name}' недоступна\n• Проблеми з Google API\n\nПеревірте: Settings → API Keys → Google Gemini"
                 _logger.error(error_msg)
                 result['errors'].append(error_msg)
                 return result
@@ -484,17 +723,25 @@ class GoogleGeminiParser:
             # Зберегти оригінальний JSON
             result['raw_json'] = json_text
             
-            # Очистити JSON від control characters
-            # Замінити неекрановані переноси рядків та інші контрольні символи
+            # Очистити JSON від control characters та витягти з markdown
             import re
-            # Видалити control characters (коди 0-31 крім \t, \n, \r які повинні бути екрановані)
-            json_text_cleaned = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f]', '', json_text)
             
-            # Якщо JSON обернутий в ```json ... ```, витягти
+            # СПОЧАТКУ витягти JSON з markdown (якщо є) - дозволяємо моделі використовувати природний стиль
+            json_text_cleaned = json_text
             if '```json' in json_text_cleaned:
-                json_text_cleaned = json_text_cleaned.split('```json')[1].split('```')[0].strip()
+                # Витягти між ```json та наступним ```
+                match = re.search(r'```json\s*(.+?)\s*```', json_text_cleaned, re.DOTALL)
+                if match:
+                    json_text_cleaned = match.group(1).strip()
             elif '```' in json_text_cleaned:
-                json_text_cleaned = json_text_cleaned.split('```')[1].split('```')[0].strip()
+                # Витягти між будь-якими ``` та ```
+                match = re.search(r'```\s*(.+?)\s*```', json_text_cleaned, re.DOTALL)
+                if match:
+                    json_text_cleaned = match.group(1).strip()
+            
+            # ПОТІМ очистити control characters
+            # Видалити control characters (коди 0-31 крім \t, \n, \r які повинні бути екрановані)
+            json_text_cleaned = re.sub(r'[\x00-\x08\x0b-\x0c\x0e-\x1f]', '', json_text_cleaned)
             
             _logger.info(f"Cleaned JSON length: {len(json_text_cleaned)}")
             
@@ -505,6 +752,18 @@ class GoogleGeminiParser:
             result['header'] = parsed_data.get('header', {})
             result['lines'] = parsed_data.get('lines', [])
             result['metadata'] = parsed_data.get('metadata', {})
+            
+            # Перевірити і виправити математику (AI тільки витягує дані, Python перевіряє)
+            result, math_warnings = AIParserService._validate_and_fix_math(result)
+            if math_warnings:
+                _logger.info(f"📊 Math validation: {len(math_warnings)} adjustments")
+                for warning in math_warnings:
+                    _logger.debug(f"  {warning}")
+                # Додати попередження в metadata
+                if 'metadata' not in result:
+                    result['metadata'] = {}
+                result['metadata']['math_warnings'] = math_warnings
+            
             result['success'] = True
             
             # Токени

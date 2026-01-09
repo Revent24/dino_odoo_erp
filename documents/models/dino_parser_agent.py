@@ -56,7 +56,7 @@ class DinoParserAgent(models.Model):
     ]
     
     def write(self, vals):
-       """
+        """
         При установке is_default=True, автоматически снять с других.
         Также проверять что default agent всегда активен.
         """
@@ -154,6 +154,14 @@ class DinoParserAgent(models.Model):
         from ..services.ai_parser_service import AIParserService
         from ..services.regex_parser_service import RegexParserService
         
+        # Получить список единиц измерения из БД
+        units_list = []
+        try:
+            units_list = self.env['dino.uom'].search([('active', '=', True)]).mapped('name')
+            _logger.debug(f"Loaded {len(units_list)} units from dino.uom")
+        except Exception as e:
+            _logger.warning(f"Failed to load units from dino.uom: {e}")
+        
         # Вызываем парсер в зависимости от типа агента
         if self.agent_type in ['ai_openai_compatible', 'ai_google', 'ai_groq']:
             # AI парсеры (OpenRouter, Gemini, Groq)
@@ -167,6 +175,7 @@ class DinoParserAgent(models.Model):
                 model_name=self.model_name,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
+                units_list=units_list,  # ← Передаємо список одиниць
             )
         elif self.agent_type == 'regex_universal':
             # Regex парсер (тільки текст)

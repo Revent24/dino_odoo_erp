@@ -38,10 +38,22 @@ class DinoOperationDocumentSpecification(models.Model):
         required=True,
         default=1.0
     )
-    uom_id = fields.Many2one(
-        'uom.uom',
+    dino_uom_id = fields.Many2one(
+        'dino.uom',
         string='Unit',
-        default=lambda self: self.env.ref('uom.product_uom_unit', raise_if_not_found=False)
+        default=lambda self: self.env.ref('dino_erp.dino_uom_unit', raise_if_not_found=False)
+    )
+    description = fields.Text(
+        string='Notes',
+        help='Additional notes or comments for this line (e.g. actual quantity in different units)'
+    )
+    article = fields.Char(
+        string='Article',
+        help='Article number or SKU'
+    )
+    ukt_zed = fields.Char(
+        string='UKT ZED',
+        help='Ukrainian Classification of Foreign Economic Activity code'
     )
 
     # === ДЕНЕЖНЫЕ ПОЛЯ ===
@@ -59,7 +71,7 @@ class DinoOperationDocumentSpecification(models.Model):
     vat_rate = fields.Float(
         string='VAT Rate (%)',
         related='document_id.vat_rate',
-        store=True,
+        store=False,  # Changed from True to False - always get from document dynamically
         readonly=True
     )
     amount_tax = fields.Monetary(
@@ -164,18 +176,20 @@ class DinoOperationDocumentSpecification(models.Model):
     @api.onchange('price_untaxed')
     def _onchange_price_untaxed(self):
         """При изменении цены без НДС пересчитать цену с НДС"""
-        if self.price_untaxed and self.vat_rate:
-            self.price_tax = self.price_untaxed * (1 + self.vat_rate / 100)
-        elif self.price_untaxed:
-            self.price_tax = self.price_untaxed
+        if self.price_untaxed is not False:  # Allow 0 values
+            if self.vat_rate:
+                self.price_tax = self.price_untaxed * (1 + self.vat_rate / 100)
+            else:
+                self.price_tax = self.price_untaxed
 
     @api.onchange('price_tax')
     def _onchange_price_tax(self):
         """При изменении цены с НДС пересчитать цену без НДС"""
-        if self.price_tax and self.vat_rate:
-            self.price_untaxed = self.price_tax / (1 + self.vat_rate / 100)
-        elif self.price_tax:
-            self.price_untaxed = self.price_tax
+        if self.price_tax is not False:  # Allow 0 values
+            if self.vat_rate:
+                self.price_untaxed = self.price_tax / (1 + self.vat_rate / 100)
+            else:
+                self.price_untaxed = self.price_tax
 
     @api.onchange('supplier_nomenclature_id')
     def _onchange_supplier_nomenclature_id(self):

@@ -92,7 +92,7 @@ class DinoOperationDocument(models.Model):
     vat_rate = fields.Float(
         string='VAT Rate (%)',
         compute='_compute_vat_rate',
-        store=True,
+        store=False,  # Changed from True to False - always compute dynamically
         readonly=True
     )
     amount_tax = fields.Monetary(
@@ -195,9 +195,47 @@ class DinoOperationDocument(models.Model):
                 if project and project.partner_id:
                     vals['partner_id'] = project.partner_id.id
         records = super().create(vals_list)
+        
+        # Ensure tax system is set for partners after creation
+        for record in records:
+            if record.partner_id:
+                record._ensure_partner_tax_system()
+        
         return records
 
     def write(self, vals):
+        result = super().write(vals)
+        
+        # If partner_id changed, ensure tax system
+        if 'partner_id' in vals:
+            for record in self:
+                if record.partner_id:
+                    record._ensure_partner_tax_system()
+        
+        return result
+    
+    def _ensure_partner_tax_system(self):
+        """
+        Ensure partner has tax system set. If not, find or create appropriate tax system.
+        Then recompute vat_rate on document.
+        """
+        self.ensure_one()
+        
+        if not self.partner_id:
+            return
+        
+        # Check if partner has tax system
+        if not self.partner_id.tax_system_id:
+            _logger.info(f"Partner {self.partner_id.name} (EGRPOU: {self.partner_id.egrpou}) has no tax system, creating/assigning one")
+            
+            # Get VAT rate from document if set, otherwise use default
+            vat_rate = self.vat_rate if self.vat_rate else 20.0
+            
+            # Use partner's ensure_tax_system method
+            self.partner_id.ensure_tax_system(vat_rate=vat_rate)
+        
+        # Force recompute vat_rate on document
+        self._compute_vat_rate()
         # If project changed and partner not explicitly set, sync partner from project
         res = super().write(vals)
         if 'project_id' in vals and 'partner_id' not in vals:

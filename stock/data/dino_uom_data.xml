@@ -1,9 +1,51 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data noupdate="0">
+    <!-- Base unit of measure -->
     <record id="dino_uom_unit" model="dino.uom">
-      <field name="name">Unit</field>
+      <field name="name">шт</field>
       <field name="rounding">0.01</field>
+      <field name="conversion_factor">1.0</field>
+    </record>
+    
+    <!-- Common Ukrainian units - base units first -->
+    <record id="dino_uom_g" model="dino.uom">
+      <field name="name">г</field>
+      <field name="rounding">0.01</field>
+      <field name="conversion_factor">1.0</field>
+    </record>
+    
+    <record id="dino_uom_kg" model="dino.uom">
+      <field name="name">кг</field>
+      <field name="rounding">0.001</field>
+      <field name="conversion_factor">1000.0</field>
+      <field name="related_uom_id" ref="dino_uom_g"/>
+    </record>
+    
+    <record id="dino_uom_cm" model="dino.uom">
+      <field name="name">см</field>
+      <field name="rounding">0.01</field>
+      <field name="conversion_factor">1.0</field>
+    </record>
+    
+    <record id="dino_uom_m" model="dino.uom">
+      <field name="name">м</field>
+      <field name="rounding">0.01</field>
+      <field name="conversion_factor">100.0</field>
+      <field name="related_uom_id" ref="dino_uom_cm"/>
+    </record>
+    
+    <record id="dino_uom_ml" model="dino.uom">
+      <field name="name">мл</field>
+      <field name="rounding">0.01</field>
+      <field name="conversion_factor">1.0</field>
+    </record>
+    
+    <record id="dino_uom_l" model="dino.uom">
+      <field name="name">л</field>
+      <field name="rounding">0.01</field>
+      <field name="conversion_factor">1000.0</field>
+      <field name="related_uom_id" ref="dino_uom_ml"/>
     </record>
   </data>
 </odoo>

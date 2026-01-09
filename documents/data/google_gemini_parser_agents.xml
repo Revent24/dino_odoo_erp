@@ -7,19 +7,19 @@
             <field name="sequence">35</field>
             <field name="agent_type">ai_google</field>
             <field name="active" eval="False"/>
-            <field name="description">Парсинг документів через Google Gemini API. Підтримує зображення та текст. Використовує модель gemini-2.0-flash-exp (швидка та безкоштовна).</field>
+            <field name="description">Парсинг документів через Google Gemini API. Підтримує зображення та текст. Використовує модель gemini-2.0-flash-exp (швидка та безкоштовна). Отримати API ключ: https://aistudio.google.com/app/apikey</field>
             
             <!-- API Configuration -->
-            <field name="api_endpoint">https://generativelanguage.googleapis.com/v1beta/models</field>
-            <field name="model_name">models/gemini-2.0-flash-exp</field>
+            <field name="model_name">gemini-2.0-flash-exp</field>
             
             <!-- Rate Limits для Gemini Free tier -->
             <field name="rate_limit_rpm">15</field>
             <field name="rate_limit_tpm">1000000</field>
             <field name="rate_limit_rpd">1500</field>
             
-            <!-- Temperature -->
+            <!-- Temperature and Tokens -->
             <field name="temperature">0.1</field>
+            <field name="max_tokens">8192</field>
         </record>
         
         <!-- Google Gemini Flash 1.5 (alternative) -->
@@ -28,19 +28,19 @@
             <field name="sequence">36</field>
             <field name="agent_type">ai_google</field>
             <field name="active" eval="False"/>
-            <field name="description">Парсинг документів через Google Gemini 1.5 Flash API. Стабільна версія з хорошою якістю розпізнавання.</field>
+            <field name="description">Парсинг документів через Google Gemini 1.5 Flash API. Стабільна версія з хорошою якістю розпізнавання. Отримати API ключ: https://aistudio.google.com/app/apikey</field>
             
             <!-- API Configuration -->
-            <field name="api_endpoint">https://generativelanguage.googleapis.com/v1beta/models</field>
-            <field name="model_name">models/gemini-1.5-flash-latest</field>
+            <field name="model_name">gemini-1.5-flash-latest</field>
             
             <!-- Rate Limits -->
             <field name="rate_limit_rpm">15</field>
             <field name="rate_limit_tpm">1000000</field>
             <field name="rate_limit_rpd">1500</field>
             
-            <!-- Temperature -->
+            <!-- Temperature and Tokens -->
             <field name="temperature">0.1</field>
+            <field name="max_tokens">8192</field>
         </record>
         
     </data>

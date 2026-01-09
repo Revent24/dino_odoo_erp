@@ -9,13 +9,24 @@ class DinoPartnerNomenclature(models.Model):
     partner_id = fields.Many2one('dino.partner', string='Partner', required=True, ondelete='cascade')
     name = fields.Char(string='Supplier Item Name', required=True, translate=True)
     nomenclature_id = fields.Many2one('dino.nomenclature', string='Internal Nomenclature', ondelete='restrict')
-    uom_id = fields.Many2one('uom.uom', string='Unit')
+    dino_uom_id = fields.Many2one('dino.uom', string='Document Unit', help='Unit of measure from supplier documents')
+    warehouse_uom_id = fields.Many2one(
+        'dino.uom', 
+        string='Warehouse Unit', 
+        help='Unit of measure for warehouse operations. Defaults to document unit, but can be changed.'
+    )
     sequence = fields.Integer(string='Sequence', default=10)
     active = fields.Boolean(string='Active', default=True)
 
     _sql_constraints = [
         ('partner_name_uniq', 'UNIQUE(partner_id, name)', 'Supplier item name must be unique per partner'),
     ]
+    
+    @api.onchange('dino_uom_id')
+    def _onchange_dino_uom_id(self):
+        """Auto-fill warehouse_uom_id with document unit if not set"""
+        if self.dino_uom_id and not self.warehouse_uom_id:
+            self.warehouse_uom_id = self.dino_uom_id
 
     def name_get(self):
         res = []

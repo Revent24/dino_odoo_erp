@@ -200,6 +200,41 @@ class DinoPartner(models.Model):
                 rec.vat_rate = rec.tax_system_id.vat_rate
             else:
                 rec.vat_rate = 0.0
+    
+    def ensure_tax_system(self, vat_rate=None):
+        """
+        Ensure partner has tax system set. If not, find or create appropriate tax system.
+        
+        :param vat_rate: VAT rate to set (if creating new tax system), defaults to partner's current vat_rate
+        :return: tax system record
+        """
+        self.ensure_one()
+        
+        # If already has tax system, return it
+        if self.tax_system_id:
+            return self.tax_system_id
+        
+        # Determine VAT rate to use
+        if vat_rate is None:
+            vat_rate = 20.0  # Default VAT rate in Ukraine
+        
+        # Try to find existing tax system with this VAT rate
+        TaxSystem = self.env['dino.tax.system']
+        tax_system = TaxSystem.search([('vat_rate', '=', vat_rate)], limit=1)
+        
+        # If not found, create new tax system
+        if not tax_system:
+            _logger.info(f"Creating new tax system with VAT rate {vat_rate}%")
+            tax_system = TaxSystem.create({
+                'name': f'VAT {vat_rate}%',
+                'vat_rate': vat_rate
+            })
+        
+        # Assign tax system to partner
+        self.tax_system_id = tax_system
+        _logger.info(f"Assigned tax system '{tax_system.name}' to partner {self.name} (EGRPOU: {self.egrpou})")
+        
+        return tax_system
 
     @staticmethod
     def _parse_date_str(d):

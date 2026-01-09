@@ -13,15 +13,12 @@
    - Result: quantity=79.36, unit="kg", name="Sheet stainless 201 0.8"
    - WARNING: 0.8 in the name is a characteristic (thickness), NOT quantity!
 
-3. **Extract numbers as-is** - copy from document, calculations will be verified later
-   - Read quantity, price_unit, price_subtotal, price_total AS SHOWN in document
-   - Don't calculate - just copy the numbers you see
-   - IMPORTANT: Not all price fields will be in document:
-     * Some documents have only price_unit (without VAT)
-     * Some have only price_unit_with_tax (with VAT)
-     * Some have both - extract both if visible
-     * Same for price_subtotal and price_total - copy what you see
-   
+3. **Math (mandatory check):**
+   - price_subtotal = quantity × price_unit
+   - price_total = price_subtotal × (1 + tax_percent/100)
+   - amount_untaxed = sum of all price_subtotal
+   - amount_total = sum of all price_total
+
 4. **MFO** = characters 5-10 from IBAN
    - Example: UA**293005**280000... → MFO = "300528"
 
@@ -49,7 +46,6 @@
     "vendor_bank": "string or null",
     "currency": "UAH",
     "amount_untaxed": "number (without VAT)",
-    "tax_percent": "0 or 20",
     "amount_tax": "number (VAT amount)",
     "amount_total": "number (total to pay)"
   },
@@ -59,13 +55,12 @@
       "name": "string (name WITHOUT quantity/unit)",
       "quantity": "number",
       "unit": "string (as in document)",
-      "price_unit": "number (without VAT) or null",
-      "price_unit_with_tax": "number (with VAT) or null",
-      "price_subtotal": "number (without VAT) or null",
-      "price_total": "number (with VAT) or null",
+      "price_unit": "number (without VAT)",
+      "tax_percent": "0 or 20",
+      "price_subtotal": "number (without VAT)",
+      "price_total": "number (with VAT)",
       "article": "string or null",
-      "ukt_zed": "string (digits only) or null",
-      "description": "string or null (additional notes about this line)"
+      "ukt_zed": "string (digits only) or null"
     }
   ]
 }

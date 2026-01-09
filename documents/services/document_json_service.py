@@ -109,9 +109,8 @@ class DocumentJSONService:
                 result['updated_lines'] = line_result['updated']
                 result['errors'].extend(line_result['errors'])
             
-            # 4. Обчислення ПДВ
-            if json_data.get('lines'):
-                DocumentJSONService._calculate_vat_rate(document, json_data['lines'])
+            # VAT rate теперь берется автоматически из системы налогообложения контрагента
+            # через метод _ensure_partner_tax_system() в документе
             
             result['success'] = True
             
@@ -254,50 +253,21 @@ class DocumentJSONService:
         
         PartnerNomenclature = document.env['dino.partner.nomenclature']
         Specification = document.env['dino.operation.document.specification']
-        Uom = document.env['uom.uom']
+        DinoUom = document.env['dino.uom']
         
         for line_data in lines_data:
             try:
-                # Знайти або створити одиницю виміру (точне співпадіння!)
+                # Find or create unit of measure using dino.uom
                 unit_name = line_data.get('unit')
                 uom = None
                 
                 if unit_name:
-                    # Спочатку точний пошук
-                    uom = Uom.search([('name', '=', unit_name)], limit=1)
-                    
-                    # Якщо не знайдено - створити нову одиницю
-                    if not uom:
-                        try:
-                            _logger.info(f"Creating new UOM: {unit_name}")
-                            # Знайти категорію "Unit" як базову
-                            uom_category = document.env.ref('uom.product_uom_categ_unit', raise_if_not_found=False)
-                            if not uom_category:
-                                # Знайти будь-яку категорію
-                                uom_category = document.env['uom.category'].search([], limit=1)
-                            
-                            if not uom_category:
-                                # Створити базову категорію, якщо немає жодної
-                                _logger.info("Creating new UOM category: Unit")
-                                uom_category = document.env['uom.category'].create({
-                                    'name': 'Unit',
-                                })
-                            
-                            _logger.info(f"Using UOM category: {uom_category.name} (id: {uom_category.id})")
-                            
-                            uom = Uom.create({
-                                'name': unit_name,
-                                'category_id': uom_category.id,
-                                'uom_type': 'reference',
-                                'rounding': 0.01,
-                            })
-                            _logger.info(f"✅ Created UOM: {uom.name} (id: {uom.id})")
-                        except Exception as uom_error:
-                            _logger.error(f"Failed to create UOM '{unit_name}': {uom_error}", exc_info=True)
-                            # Використати штучну одиницю або пропустити
-                            uom = document.env.ref('uom.product_uom_unit', raise_if_not_found=False)
+                    # Use find_or_create method from dino.uom model
+                    uom = DinoUom.find_or_create(unit_name)
+                    if uom:
+                        _logger.info(f"Using UOM: {uom.name} (id: {uom.id})")
                 
-                # Знайти або створити в довіднику партнера
+                # Find or create in partner nomenclature
                 supplier_nomenclature = None
                 if document.partner_id:
                     nomenclature_vals = {
@@ -306,7 +276,8 @@ class DocumentJSONService:
                     }
                     
                     if uom:
-                        nomenclature_vals['uom_id'] = uom.id
+                        nomenclature_vals['dino_uom_id'] = uom.id
+                        nomenclature_vals['warehouse_uom_id'] = uom.id  # Default to same unit
                     
                     supplier_nomenclature = PartnerNomenclature.search([
                         ('partner_id', '=', document.partner_id.id),
@@ -314,8 +285,16 @@ class DocumentJSONService:
                     ], limit=1)
                     
                     if supplier_nomenclature:
-                        if uom and not supplier_nomenclature.uom_id:
-                            supplier_nomenclature.uom_id = uom
+                        # Update unit if not set or changed
+                        if uom:
+                            if not supplier_nomenclature.dino_uom_id:
+                                supplier_nomenclature.write({
+                                    'dino_uom_id': uom.id,
+                                    'warehouse_uom_id': uom.id
+                                })
+                            elif supplier_nomenclature.dino_uom_id.id != uom.id:
+                                # Unit changed - update document unit only
+                                supplier_nomenclature.dino_uom_id = uom.id
                     else:
                         supplier_nomenclature = PartnerNomenclature.create(nomenclature_vals)
                 
@@ -333,13 +312,22 @@ class DocumentJSONService:
                     'sequence': line_data.get('line_number', 0),
                 }
                 
+                # Додати description якщо є
+                if line_data.get('description'):
+                    spec_vals['description'] = line_data['description']
+                
                 # Розрахунок price_tax (ціна за одиницю З ПДВ)
-                price_unit = line_data.get('price_unit', 0.0)
-                tax_percent = line_data.get('tax_percent', 0)
-                if tax_percent > 0:
-                    spec_vals['price_tax'] = price_unit * (1 + tax_percent / 100)
+                # Пріоритет: price_unit_with_tax з AI, потім розрахунок
+                if line_data.get('price_unit_with_tax'):
+                    spec_vals['price_tax'] = line_data['price_unit_with_tax']
                 else:
-                    spec_vals['price_tax'] = price_unit
+                    # Розрахувати з price_unit та tax_percent
+                    price_unit = line_data.get('price_unit', 0.0)
+                    tax_percent = line_data.get('tax_percent', 0)
+                    if tax_percent > 0:
+                        spec_vals['price_tax'] = price_unit * (1 + tax_percent / 100)
+                    else:
+                        spec_vals['price_tax'] = price_unit
                 
                 if supplier_nomenclature:
                     spec_vals['supplier_nomenclature_id'] = supplier_nomenclature.id
@@ -347,7 +335,7 @@ class DocumentJSONService:
                         spec_vals['nomenclature_id'] = supplier_nomenclature.nomenclature_id.id
                 
                 if uom:
-                    spec_vals['uom_id'] = uom.id
+                    spec_vals['dino_uom_id'] = uom.id
                 
                 if existing_spec:
                     existing_spec.write(spec_vals)
@@ -364,26 +352,7 @@ class DocumentJSONService:
         return result
     
     @staticmethod
-    def _calculate_vat_rate(document, lines_data):
-        """
-        Обчислення ставки ПДВ на основі рядків документа.
-        
-        :param document: запис dino.operation.document
-        :param lines_data: list з даними про позиції
-        """
-        total_subtotal = 0.0
-        total_with_tax = 0.0
-        
-        for line_data in lines_data:
-            subtotal = line_data.get('price_subtotal') or 0.0
-            total = line_data.get('price_total') or 0.0
-            
-            if subtotal is not None:
-                total_subtotal += float(subtotal)
-            if total is not None:
-                total_with_tax += float(total)
-        
-        if total_subtotal > 0 and total_with_tax > total_subtotal:
-            vat_rate = ((total_with_tax - total_subtotal) / total_subtotal) * 100
-            document.vat_rate = round(vat_rate, 2)
-            _logger.info(f"Calculated VAT rate: {vat_rate:.2f}%")
+    # NOTE: VAT rate calculation removed
+    # VAT rate теперь берется из системы налогообложения контрагента
+    # через partner_id -> tax_system_id -> vat_rate
+    # См. метод _ensure_partner_tax_system() в dino_document.py

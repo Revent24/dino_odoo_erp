@@ -10,7 +10,8 @@
                     <field name="sequence" widget="handle"/>
                     <field name="name"/>
                     <field name="nomenclature_id"/>
-                    <field name="uom_id"/>
+                    <field name="dino_uom_id" string="Doc Unit"/>
+                    <field name="warehouse_uom_id" string="Warehouse Unit"/>
                     <field name="active"/>
                 </list>
             </field>
@@ -27,7 +28,8 @@
                             <field name="partner_id"/>
                             <field name="name"/>
                             <field name="nomenclature_id"/>
-                            <field name="uom_id"/>
+                            <field name="dino_uom_id" string="Document Unit"/>
+                            <field name="warehouse_uom_id" string="Warehouse Unit"/>
                             <field name="active"/>
                         </group>
                     </sheet>
