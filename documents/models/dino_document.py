@@ -107,9 +107,8 @@ class DinoOperationDocument(models.Model):
         store=True,
         currency_field='currency_id'
     )
-    notes = fields.Html(
-        string='Notes',
-        translate=True
+    notes = fields.Text(
+        string='Notes'
     )
     specification_ids = fields.One2many(
         'dino.operation.document.specification',
@@ -236,13 +235,6 @@ class DinoOperationDocument(models.Model):
         
         # Force recompute vat_rate on document
         self._compute_vat_rate()
-        # If project changed and partner not explicitly set, sync partner from project
-        res = super().write(vals)
-        if 'project_id' in vals and 'partner_id' not in vals:
-            for rec in self:
-                if rec.project_id and rec.project_id.partner_id:
-                    rec.partner_id = rec.project_id.partner_id
-        return res
 
     def action_open_form(self):
         self.ensure_one()
@@ -319,6 +311,14 @@ class DinoOperationDocument(models.Model):
         if not parse_result['success']:
             error_msg = '\n'.join(parse_result.get('errors', ['Ошибка парсинга']))
             raise UserError(f'Не удалось разобрать документ:\n{error_msg}')
+        
+        # 🔍 ДІАГНОСТИКА: Зберегти повний текст запиту в notes документа
+        if parse_result.get('debug_info'):
+            full_request = parse_result['debug_info'].get('full_request', '')
+            # Обрізаємо до 10000 символів щоб швидше
+            if len(full_request) > 10000:
+                full_request = full_request[:10000] + "\n\n... (обрізано)"
+            self.write({'notes': full_request})
         
         # Этап 2: Обработка JSON через сервис
         from ..services.document_json_service import DocumentJSONService

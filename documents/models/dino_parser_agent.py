@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
+import logging
 from odoo import models, fields, api
+
+_logger = logging.getLogger(__name__)
 
 
 class DinoParserAgent(models.Model):
@@ -158,9 +161,8 @@ class DinoParserAgent(models.Model):
         units_list = []
         try:
             units_list = self.env['dino.uom'].search([('active', '=', True)]).mapped('name')
-            _logger.debug(f"Loaded {len(units_list)} units from dino.uom")
         except Exception as e:
-            _logger.warning(f"Failed to load units from dino.uom: {e}")
+            _logger.warning(f"Failed to load units: {e}")
         
         # Вызываем парсер в зависимости от типа агента
         if self.agent_type in ['ai_openai_compatible', 'ai_google', 'ai_groq']:
@@ -211,8 +213,6 @@ class DinoParserAgent(models.Model):
         else:
             # Если ошибка и есть fallback агент - попробовать его
             if self.fallback_agent_id:
-                import logging
-                _logger = logging.getLogger(__name__)
                 _logger.warning(f"Agent {self.name} failed. Trying fallback: {self.fallback_agent_id.name}")
                 
                 # Добавить информацию о fallback в результат

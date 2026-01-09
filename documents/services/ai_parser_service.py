@@ -301,7 +301,7 @@ class OpenRouterParser:
         :param text: Текст документа (опціонально)
         :param image_data: Бінарні дані зображення (опціонально)
         :param partner_name: Назва партнера
-        :param kwargs: api_key, model_name, temperature, max_tokens
+        :param kwargs: api_key, model_name, temperature, max_tokens, debug_only
         :return: dict
         """
         result = {
@@ -314,6 +314,9 @@ class OpenRouterParser:
             'cost': 0.0,
             'barcodes': []  # Загальний список всіх штрихкодів з документа
         }
+        
+        # 🔍 DEBUG MODE: Тільки формування запиту без відправки
+        debug_only = kwargs.get('debug_only', False)
         
         try:
             # Параметри API
@@ -338,17 +341,14 @@ class OpenRouterParser:
             units_str = ""
             units_list = kwargs.get('units_list', [])
             if units_list:
-                # Обмежити до 50 одиниць для економії токенів
-                units_display = units_list[:50]
-                units_str = f"\n\n📦 Доступні одиниці виміру: {', '.join(units_display)}"
-                if len(units_list) > 50:
-                    units_str += f" (та ще {len(units_list)-50}...)"
+                # Обмежити до 20 одиниць для економії токенів
+                units_display = units_list[:20]
+                units_str = f"\n\n#Units template: {', '.join(units_display)}"
+                if len(units_list) > 20:
+                    units_str += f" (+{len(units_list)-20})"
             
             # Системний промпт - МІНІМАЛЬНА обгортка
-            system_prompt = f"""{parsing_template}{units_str}
-
-Поверни ТІЛЬКИ валідний JSON. Мова: українська.
-(Markdown форматування ```json дозволено - воно буде автоматично очищене)"""
+            system_prompt = f"""{parsing_template}{units_str}"""
             
             # Підготувати запит
             # Перевірка чи це Groq API
@@ -409,6 +409,15 @@ class OpenRouterParser:
                 ]
             }
             
+            # 🔍 DEBUG MODE: Якщо debug_only=True, повернути тільки debug_info БЕЗ запиту
+            if debug_only:
+                user_text = user_message_content[0]["text"] if isinstance(user_message_content, list) else user_message_content
+                full_request_text = f"{system_prompt}\n\n{user_text}"
+                result['debug_info'] = {'full_request': full_request_text}
+                result['success'] = True
+                result['errors'] = ['DEBUG MODE']
+                return result
+            
             # Додати response_format тільки для Groq з правильним синтаксисом
             if is_groq:
                 request_data["response_format"] = {"type": "json_object"}
@@ -416,14 +425,22 @@ class OpenRouterParser:
             # Відправити запит до API
             _logger.info(f"Sending request to {api_base_url} with model {model_name}")
             _logger.debug(f"Request headers: {headers}")
-            _logger.debug(f"Request data keys: {request_data.keys()}")
+            # _logger.debug(f"Request data keys: {request_data.keys()}")
             
-            response = requests.post(
-                url=api_base_url,
-                headers=headers,
-                json=request_data,
-                timeout=120
-            )
+            import time
+            req_start = time.time()
+            
+            try:
+                response = requests.post(
+                    url=api_base_url,
+                    headers=headers,
+                    json=request_data,
+                    timeout=120
+                )
+                _logger.info(f"⏱️ API Response time: {time.time() - req_start:.2f}s")
+            except requests.exceptions.Timeout:
+                 _logger.error(f"⏱️ API Timeout after {time.time() - req_start:.2f}s")
+                 raise
             
             # Логування помилки якщо є
             if response.status_code != 200:
@@ -445,7 +462,10 @@ class OpenRouterParser:
             result['metadata'] = parsed_json.get('metadata', {})
             
             # Перевірити і виправити математику (AI тільки витягує дані, Python перевіряє)
+            math_start = time.time()
             result, math_warnings = AIParserService._validate_and_fix_math(result)
+            _logger.info(f"⏱️ Math validation time: {time.time() - math_start:.2f}s")
+            
             if math_warnings:
                 _logger.info(f"📊 Math validation: {len(math_warnings)} adjustments")
                 for warning in math_warnings:
@@ -492,7 +512,7 @@ class GoogleGeminiParser:
         :param text: Текст документа (опціонально)
         :param image_data: Зображення (опціонально)
         :param partner_name: Назва партнера
-        :param kwargs: api_key, model_name, temperature, max_tokens
+        :param kwargs: api_key, model_name, temperature, max_tokens, debug_only
         :return: dict
         """
         result = {
@@ -505,6 +525,9 @@ class GoogleGeminiParser:
             'cost': 0.0,
             'barcodes': []  # Загальний список всіх штрихкодів з документа
         }
+        
+        # 🔍 DEBUG MODE: Тільки формування запиту без відправки
+        debug_only = kwargs.get('debug_only', False)
         
         # Отримати параметри
         api_key = kwargs.get('api_key')
@@ -525,29 +548,24 @@ class GoogleGeminiParser:
         units_str = ""
         units_list = kwargs.get('units_list', [])
         if units_list:
-            # Обмежити до 50 одиниць для економії токенів
-            units_display = units_list[:50]
-            units_str = f"\n\n📦 Доступні одиниці виміру: {', '.join(units_display)}"
-            if len(units_list) > 50:
-                units_str += f" (та ще {len(units_list)-50}...)"
+            # Обмежити до 20 одиниць для економії токенів
+            units_display = units_list[:20]
+            units_str = f"\n\n#Units template: {', '.join(units_display)}"
+            if len(units_list) > 20:
+                units_str += f" (+{len(units_list)-20})"
         
         # Системний промпт - МІНІМАЛЬНА обгортка
-        system_prompt = f"""{parsing_template}{units_str}
-
-Поверни ТІЛЬКИ валідний JSON. Мова: українська.
-(Markdown форматування ```json дозволено - воно буде автоматично очищене)"""
+        system_prompt = f"""{parsing_template}{units_str}"""
 
         # Підготувати частини запиту
-        parts = [{"text": system_prompt}]
-        
-        _logger.info(f"📝 System prompt length: {len(system_prompt)} chars")
-        
         if text:
-            _logger.info(f"📄 Adding text input: {len(text)} chars")
-            # Перевірка: якщо текст надто великий, попередити
-            if len(text) > 50000:
-                _logger.warning(f"⚠️ Text is very large ({len(text)} chars). This may cause timeout!")
-            parts.append({"text": f"\n\nТекст документа:\n{text}"})
+            # Об'єднати system prompt + документ в один part
+            full_prompt = f"{system_prompt}\n\n# DOCUMENT FOR PARSING:\n{text}"
+            parts = [{"text": full_prompt}]
+            _logger.info(f"📄 Full prompt with document: {len(full_prompt)} chars")
+        else:
+            parts = [{"text": system_prompt}]
+            _logger.info(f"📝 System prompt only: {len(system_prompt)} chars")
         
         if image_data:
             # Визначити MIME type
@@ -623,6 +641,19 @@ class GoogleGeminiParser:
                 "maxOutputTokens": kwargs.get('max_tokens', 4096)
             }
         }
+        
+        # 🔍 ДІАГНОСТИКА: Зберегти ПОВНИЙ текст запиту для аналізу
+        if debug_only:
+            # Тільки для debug mode збираємо повний текст
+            full_request_text = parts[0]['text'] if parts and 'text' in parts[0] else ""
+            result['debug_info'] = {'full_request': full_request_text}
+        
+        # 🔍 DEBUG MODE: Якщо debug_only=True, повернути тільки debug_info БЕЗ запиту
+        if debug_only:
+            _logger.warning("⚠️ DEBUG MODE: Запит НЕ відправлено, повертаю тільки debug_info")
+            result['success'] = True
+            result['errors'] = ['DEBUG MODE: Запит сформовано, але НЕ відправлено']
+            return result
         
         try:
             # Если model_name уже содержит "models/", используем его как есть
@@ -754,7 +785,10 @@ class GoogleGeminiParser:
             result['metadata'] = parsed_data.get('metadata', {})
             
             # Перевірити і виправити математику (AI тільки витягує дані, Python перевіряє)
+            math_start = time.time()
             result, math_warnings = AIParserService._validate_and_fix_math(result)
+            _logger.info(f"⏱️ Gemini Math validation time: {time.time() - math_start:.2f}s")
+            
             if math_warnings:
                 _logger.info(f"📊 Math validation: {len(math_warnings)} adjustments")
                 for warning in math_warnings:

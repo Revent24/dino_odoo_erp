@@ -19,7 +19,7 @@
             
             <!-- Temperature and Tokens -->
             <field name="temperature">0.1</field>
-            <field name="max_tokens">8192</field>
+            <field name="max_tokens">2048</field>
         </record>
         
         <!-- Google Gemini Flash 1.5 (alternative) -->
@@ -40,7 +40,7 @@
             
             <!-- Temperature and Tokens -->
             <field name="temperature">0.1</field>
-            <field name="max_tokens">8192</field>
+            <field name="max_tokens">2048</field>
         </record>
         
     </data>

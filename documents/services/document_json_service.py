@@ -25,6 +25,9 @@ class DocumentJSONService:
         :param raw_json_str: оригінальний JSON рядок від AI (для збереження в ocr_result_text)
         :return: dict з результатами обробки
         """
+        import time
+        start_process = time.time()
+        
         result = {
             'success': False,
             'created_lines': 0,
@@ -56,8 +59,12 @@ class DocumentJSONService:
                     result['document_number'] = header_data['doc_number']
                 
                 # Дата документа
-                if header_data.get('doc_date'):
-                    document.date = header_data['doc_date']
+                doc_date = header_data.get('doc_date')
+                if doc_date and str(doc_date).lower() != 'null':
+                    try:
+                        document.date = doc_date
+                    except Exception as e:
+                        _logger.warning(f"Invalid date format '{doc_date}': {e}")
                 
                 # Тип документа - знайти або створити
                 if header_data.get('doc_type'):
@@ -70,6 +77,7 @@ class DocumentJSONService:
             
             # 2. Обробка supplier: знайти або створити контрагента (дані в header)
             if json_data.get('header'):
+                partner_start = time.time()
                 header_data = json_data['header']
                 
                 # Підготувати дані постачальника з header
@@ -98,9 +106,11 @@ class DocumentJSONService:
                     document.partner_id = partner
                     result['partner_found'] = True
                     _logger.info(f"Partner processed: {partner.name}")
+                _logger.info(f"⏱️ Partner processing: {time.time() - partner_start:.2f}s")
             
             # 3. Обробка lines: створення специфікацій
             if json_data.get('lines'):
+                lines_start = time.time()
                 line_result = DocumentJSONService._process_lines(
                     document,
                     json_data['lines']
@@ -108,6 +118,7 @@ class DocumentJSONService:
                 result['created_lines'] = line_result['created']
                 result['updated_lines'] = line_result['updated']
                 result['errors'].extend(line_result['errors'])
+                _logger.info(f"⏱️ Lines processing ({len(json_data['lines'])}): {time.time() - lines_start:.2f}s")
             
             # VAT rate теперь берется автоматически из системы налогообложения контрагента
             # через метод _ensure_partner_tax_system() в документе
@@ -115,9 +126,13 @@ class DocumentJSONService:
             result['success'] = True
             
         except Exception as e:
-            _logger.error(f"Error processing JSON: {e}", exc_info=True)
+            import traceback
+            tb_str = traceback.format_exc()
+            _logger.error(f"Error processing JSON: {e}\n{tb_str}")
             result['errors'].append(f"Загальна помилка: {str(e)}")
-        
+            result['errors'].append(f"Traceback: {tb_str}")
+            
+        _logger.info(f"⏱️ Total JSON Processing: {time.time() - start_process:.2f}s")
         return result
     
     @staticmethod
@@ -351,7 +366,6 @@ class DocumentJSONService:
         
         return result
     
-    @staticmethod
     # NOTE: VAT rate calculation removed
     # VAT rate теперь берется из системы налогообложения контрагента
     # через partner_id -> tax_system_id -> vat_rate
