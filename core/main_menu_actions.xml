@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data>
+
+    <!-- ACTIONS FOR MENU ITEMS -->
+
+    <!-- Action for Partners List -->
+    <record id="action_dino_partner_list" model="ir.actions.act_window">
+        <field name="name">Partners</field>
+        <field name="res_model">dino.partner</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Action for Partner Nomenclature List -->
+    <record id="action_dino_partner_nomenclature_list" model="ir.actions.act_window">
+        <field name="name">Partner Nomenclature</field>
+        <field name="res_model">dino.partner.nomenclature</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="create">false</field>
+    </record>
+
+    <!-- Action for Sales Projects -->
+    <record id="action_dino_project_sales" model="ir.actions.act_window">
+        <field name="name">Sales Projects</field>
+        <field name="res_model">dino.project</field>
+        <field name="view_mode">list,form</field>
+        <field name="context">{'default_project_type': 'sale', 'partner_role_filter': 'customer', 'default_partner_role': 'customer'}</field>
+        <field name="domain">[('project_type','=','sale')]</field>
+        <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_sale'),'tree'),(ref('dino_erp.view_dino_project_form_sale'),'form')]"/>
+    </record>
+
+    <!-- Action for Tax Systems -->
+    <record id="action_dino_tax_system_list" model="ir.actions.act_window">
+        <field name="name">Tax Systems</field>
+        <field name="res_model">dino.tax.system</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new tax system
+            </p>
+        </field>
+    </record>
+
+    <!-- Action for API Endpoints List -->
+   <record id="action_dino_api_endpoint_list" model="ir.actions.act_window">
+     <field name="name">API Endpoints</field>
+     <field name="res_model">dino.api.endpoint</field>
+     <field name="view_mode">list,form</field>
+     <field name="context">{'active_test': False}</field>
+     <field name="help" type="html">
+       <p class="o_view_nocontent_smiling_face">
+         Configure API integrations for banks and external services
+       </p>
+     </field>
+   </record>
+
+   <!-- Action for Bank Transactions -->
+   <record id="action_dino_bank_transaction" model="ir.actions.act_window">
+       <field name="name">Bank Transactions</field>
+       <field name="res_model">dino.bank.transaction</field>
+       <field name="view_mode">list,form</field>
+       <field name="domain">[('bank_account_id.show_in_transactions', '=', True)]</field>
+   </record>
+
+   <!-- Action for Bank Balance History -->
+   <record id="action_dino_bank_balance_history" model="ir.actions.act_window">
+       <field name="name">Balance History</field>
+       <field name="res_model">dino.bank.balance.history</field>
+       <field name="view_mode">graph,list,pivot,form</field>
+   </record>
+
+   <!-- Action for Currency Rates -->
+   <record id="action_dino_currency_rate" model="ir.actions.act_window">
+       <field name="name">Currency Rates</field>
+       <field name="res_model">dino.currency.rate</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Cashbook -->
+   <record id="action_dino_cashbook" model="ir.actions.act_window">
+       <field name="name">Cashbook</field>
+       <field name="res_model">dino.cashbook</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Bank Config -->
+   <record id="action_dino_bank_config" model="ir.actions.act_window">
+       <field name="name">Bank Directory</field>
+       <field name="res_model">dino.bank</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Partner Tags -->
+   <record id="action_dino_partner_tag_list" model="ir.actions.act_window">
+       <field name="name">Partner Types</field>
+       <field name="res_model">dino.partner.tag</field>
+       <field name="view_mode">list,form</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Create a new partner type
+           </p>
+       </field>
+   </record>
+
+   <!-- Action for Projects -->
+   <record id="action_dino_project" model="ir.actions.act_window">
+       <field name="name">Projects</field>
+       <field name="res_model">dino.project</field>
+       <field name="view_mode">list,form</field>
+       <field name="views" eval="[(ref('dino_erp.view_dino_project_tree'),'tree'),(ref('dino_erp.view_dino_project_form'),'form')]"/>
+       <field name="context">{'default_project_type': 'overhead'}</field>
+       <field name="domain">[('project_type','!=','sale')]</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Create a new project
+           </p>
+       </field>
+   </record>
+
+   <!-- Action for Purchase Projects -->
+   <record id="action_dino_project_purchases" model="ir.actions.act_window">
+       <field name="name">Purchase Projects</field>
+       <field name="res_model">dino.project</field>
+       <field name="view_mode">list,form</field>
+       <field name="context">{'default_project_type': 'purchase', 'partner_role_filter': 'vendor', 'default_partner_role': 'vendor'}</field>
+       <field name="domain">[('project_type','=','purchase')]</field>
+       <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_purchase'),'tree'),(ref('dino_erp.view_dino_project_form_purchase'),'form')]"/>
+   </record>
+
+   <!-- Action for Operation Documents -->
+   <record id="action_dino_operation_document_list" model="ir.actions.act_window">
+       <field name="name">Documents</field>
+       <field name="res_model">dino.operation.document</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Document Types -->
+   <record id="action_dino_document_type" model="ir.actions.act_window">
+       <field name="name">Document Types</field>
+       <field name="res_model">dino.document.type</field>
+       <field name="view_mode">list,form</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Создайте первый тип документа
+           </p>
+           <p>
+               Типы документов используются для классификации документов:
+               накладные, счета, акты, договоры и т.д.
+           </p>
+       </field>
+   </record>
+
+   <!-- Action for Parser Agents -->
+   <record id="action_dino_parser_agent" model="ir.actions.act_window">
+       <field name="name">Parser Agents</field>
+       <field name="res_model">dino.parser.agent</field>
+       <field name="view_mode">list,form</field>
+       <field name="domain">[]</field>
+       <field name="context">{'active_test': False}</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Создайте первого агента парсинга
+           </p>
+           <p>
+               Агенты парсинга используются для автоматического извлечения данных
+               из текстовых документов (накладных, счетов, счетов-фактур).
+           </p>
+       </field>
+   </record>
+
+   <!-- Action for Components -->
+   <record id="dino_component_action" model="ir.actions.act_window">
+       <field name="name">Component Families</field>
+       <field name="res_model">dino.component</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Nomenclature -->
+   <record id="dino_nomenclature_action" model="ir.actions.act_window">
+       <field name="name">Nomenclature</field>
+       <field name="res_model">dino.nomenclature</field>
+       <field name="view_mode">list,kanban,form</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Create a new Nomenclature item from Component Family.
+           </p>
+       </field>
+   </record>
+
+   <!-- Action for Component Categories -->
+   <record id="dino_component_category_action" model="ir.actions.act_window">
+       <field name="name">Categories</field>
+       <field name="res_model">dino.component.category</field>
+       <field name="view_mode">list,form</field>
+   </record>
+
+   <!-- Action for Units of Measure -->
+   <record id="dino_uom_action" model="ir.actions.act_window">
+       <field name="name">Units of Measure</field>
+       <field name="res_model">dino.uom</field>
+       <field name="view_mode">list,form</field>
+       <field name="help" type="html">
+           <p class="o_view_nocontent_smiling_face">
+               Create your first unit of measure
+           </p>
+           <p>
+               Units of measure are used to specify quantities in documents and inventory.
+           </p>
+       </field>
+   </record>
+
+  </data>
+</odoo>

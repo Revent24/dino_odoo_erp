@@ -7,6 +7,7 @@ class DinoDocumentType(models.Model):
     Справочник типов документов
     """
     _name = 'dino.document.type'
+    _inherit = ['mixin.find.or.create']
     _description = 'Document Type'
     _order = 'sequence, name'
 

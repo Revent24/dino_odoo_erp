@@ -32,14 +32,7 @@
             </field>
         </record>
 
-        <record id="action_dino_project_sales" model="ir.actions.act_window">
-            <field name="name">Sales Projects</field>
-            <field name="res_model">dino.project</field>
-            <field name="view_mode">list,form</field>
-            <field name="context">{'default_project_type': 'sale', 'partner_role_filter': 'customer', 'default_partner_role': 'customer'}</field>
-            <field name="domain">[('project_type','=','sale')]</field>
-            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_sale'),'tree'),(ref('dino_erp.view_dino_project_form_sale'),'form')]"/>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
     </data>
 </odoo>

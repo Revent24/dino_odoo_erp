@@ -90,20 +90,7 @@
             </field>
         </record>
 
-        <!-- Действие: общий список проектов (за исключением продаж) -->
-        <record id="action_dino_project" model="ir.actions.act_window">
-            <field name="name">Projects</field>
-            <field name="res_model">dino.project</field>
-            <field name="view_mode">list,form</field>
-            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree'),'tree'),(ref('dino_erp.view_dino_project_form'),'form')]"/>
-            <field name="context">{'default_project_type': 'overhead'}</field>
-            <field name="domain">[('project_type','!=','sale')]</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    Create a new project
-                </p>
-            </field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
         <!-- Sales views moved to projects/views/dino_project_views_sale.xml -->
 
@@ -157,14 +144,7 @@
             </field>
         </record>
 
-        <record id="action_dino_project_purchases" model="ir.actions.act_window">
-            <field name="name">Purchase Projects</field>
-            <field name="res_model">dino.project</field>
-            <field name="view_mode">list,form</field>
-            <field name="context">{'default_project_type': 'purchase', 'partner_role_filter': 'vendor', 'default_partner_role': 'vendor'}</field>
-            <field name="domain">[('project_type','=','purchase')]</field>
-            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_purchase'),'tree'),(ref('dino_erp.view_dino_project_form_purchase'),'form')]"/>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
         <!-- Непроизводственные проекты (overhead): представления и действие -->
         <record id="view_dino_project_tree_overhead" model="ir.ui.view">
@@ -215,14 +195,7 @@
             </field>
         </record>
 
-        <record id="action_dino_project_overhead" model="ir.actions.act_window">
-            <field name="name">Overhead Projects</field>
-            <field name="res_model">dino.project</field>
-            <field name="view_mode">list,form</field>
-            <field name="context">{'default_project_type': 'overhead'}</field>
-            <field name="domain">[('project_type','=','overhead')]</field>
-            <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_overhead'),'tree'),(ref('dino_erp.view_dino_project_form_overhead'),'form')]"/>
-        </record>
+        <!-- Action moved to core/main_menu.xml or removed if not used -->
 
     </data>
 </odoo>

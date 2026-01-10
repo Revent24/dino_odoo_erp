@@ -30,10 +30,6 @@
             </field>
         </record>
 
-        <record id="action_dino_cashbook" model="ir.actions.act_window">
-            <field name="name">Cashbook</field>
-            <field name="res_model">dino.cashbook</field>
-            <field name="view_mode">list,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
     </data>
 </odoo>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
   <data>
-    <!-- Actions moved to core/views/menu.xml -->
+    <!-- Actions moved to core/main_menu.xml -->
   </data>
 </odoo>

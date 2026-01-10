@@ -59,7 +59,8 @@
         'api_integration/security/ir.model.access.csv',
         'api_integration/views/dino_api_menu.xml',
         'api_integration/views/dino_api_endpoint_views.xml',
-        'core/views/menu.xml',
+        'core/main_menu_actions.xml',
+        'core/main_menu.xml',
     ],
 
     'application': True,

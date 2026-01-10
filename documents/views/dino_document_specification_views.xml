@@ -73,13 +73,6 @@
             </field>
         </record>
 
-        <!-- ==============================================
-             ACTION: Открытие списка строк спецификации
-             ============================================== -->
-        <record id="action_dino_operation_document_specification_list" model="ir.actions.act_window">
-            <field name="name">Specification Lines</field>
-            <field name="res_model">dino.operation.document.specification</field>
-            <field name="view_mode">list,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
     </data>
 </odoo>

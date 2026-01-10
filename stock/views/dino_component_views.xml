@@ -2,11 +2,7 @@
 <odoo>
 <data>
 
-    <record id="dino_component_action" model="ir.actions.act_window">
-        <field name="name">Component Families</field>
-        <field name="res_model">dino.component</field>
-        <field name="view_mode">list,form</field>
-    </record>
+    <!-- Action moved to core/main_menu.xml -->
 
     <record id="dino_component_view_tree" model="ir.ui.view">
         <field name="name">dino.component.view.list</field>

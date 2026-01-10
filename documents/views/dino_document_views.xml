@@ -221,14 +221,7 @@
             </field>
         </record>
 
-        <!-- ==============================================
-             ACTION: Открытие списка документов
-             ============================================== -->
-        <record id="action_dino_operation_document_list" model="ir.actions.act_window">
-            <field name="name">Documents</field>
-            <field name="res_model">dino.operation.document</field>
-            <field name="view_mode">list,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
         <!-- ==============================================
              TREE VIEW: История цен поставщиков (для смарт-кнопки из номенклатуры)

@@ -53,11 +53,6 @@
             </field>
         </record>
 
-        <record id="action_dino_bank_transaction" model="ir.actions.act_window">
-            <field name="name">Bank Transactions</field>
-            <field name="res_model">dino.bank.transaction</field>
-            <field name="view_mode">list,form</field>
-            <field name="domain">[('bank_account_id.show_in_transactions', '=', True)]</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
     </data>
 </odoo>

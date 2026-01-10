@@ -59,23 +59,7 @@
             </field>
         </record>
 
-        <!-- ==============================================
-             ACTION: Действие для открытия типов документов
-             ============================================== -->
-        <record id="action_dino_document_type" model="ir.actions.act_window">
-            <field name="name">Document Types</field>
-            <field name="res_model">dino.document.type</field>
-            <field name="view_mode">list,form</field>
-            <field name="help" type="html">
-                <p class="o_view_nocontent_smiling_face">
-                    Создайте первый тип документа
-                </p>
-                <p>
-                    Типы документов используются для классификации документов:
-                    накладные, счета, акты, договоры и т.д.
-                </p>
-            </field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
     </data>
 </odoo>

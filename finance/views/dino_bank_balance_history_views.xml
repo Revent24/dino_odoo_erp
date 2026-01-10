@@ -77,10 +77,6 @@
             </field>
         </record>
 
-        <record id="action_dino_bank_balance_history" model="ir.actions.act_window">
-            <field name="name">Balance History</field>
-            <field name="res_model">dino.bank.balance.history</field>
-            <field name="view_mode">graph,list,pivot,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
     </data>
 </odoo>

@@ -331,33 +331,12 @@ class DocumentJSONService:
                 # Find or create in partner nomenclature
                 supplier_nomenclature = None
                 if document.partner_id:
-                    nomenclature_vals = {
-                        'partner_id': document.partner_id.id,
-                        'name': line_data['name'],
-                    }
-                    
-                    if uom:
-                        nomenclature_vals['dino_uom_id'] = uom.id
-                        nomenclature_vals['warehouse_uom_id'] = uom.id  # Default to same unit
-                    
-                    supplier_nomenclature = PartnerNomenclature.search([
-                        ('partner_id', '=', document.partner_id.id),
-                        ('name', '=', line_data['name'])
-                    ], limit=1)
-                    
-                    if supplier_nomenclature:
-                        # Update unit if not set or changed
-                        if uom:
-                            if not supplier_nomenclature.dino_uom_id:
-                                supplier_nomenclature.write({
-                                    'dino_uom_id': uom.id,
-                                    'warehouse_uom_id': uom.id
-                                })
-                            elif supplier_nomenclature.dino_uom_id.id != uom.id:
-                                # Unit changed - update document unit only
-                                supplier_nomenclature.dino_uom_id = uom.id
-                    else:
-                        supplier_nomenclature = PartnerNomenclature.create(nomenclature_vals)
+                    supplier_nomenclature = PartnerNomenclature.find_or_create(
+                        partner_id=document.partner_id.id,
+                        supplier_name=line_data['name'],
+                        auto_create=True,
+                        uom_id=uom.id if uom else None
+                    )
                 
                 # Перевірити існуючий рядок
                 # ВАЖЛИВО: Шукаємо по sequence тільки якщо він НЕ дефолтний (10)

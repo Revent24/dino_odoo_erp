@@ -35,11 +35,7 @@
             </field>
         </record>
 
-        <record id="action_dino_currency_rate" model="ir.actions.act_window">
-            <field name="name">Currency Rates</field>
-            <field name="res_model">dino.currency.rate</field>
-            <field name="view_mode">list,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
         <!-- Action for built-in Odoo currency rates -->
         <record id="view_res_currency_rate_list_dino" model="ir.ui.view">

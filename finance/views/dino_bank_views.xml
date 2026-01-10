@@ -1,11 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <data>
-        <record id="action_dino_bank_config" model="ir.actions.act_window">
-            <field name="name">Bank Directory</field>
-            <field name="res_model">dino.bank</field>
-            <field name="view_mode">list,form</field>
-        </record>
+        <!-- Action moved to core/main_menu.xml -->
 
         <!-- List View -->
         <record id="view_dino_bank_list" model="ir.ui.view">

@@ -6,13 +6,18 @@
             <field name="name">dino.partner.nomenclature.list</field>
             <field name="model">dino.partner.nomenclature</field>
             <field name="arch" type="xml">
-                <list string="Partner Nomenclature" editable="bottom">
+                <list string="Partner Nomenclature" editable="bottom" 
+                    decoration-danger="document_count == 0" 
+                    decoration-muted="active == False" 
+                    decoration-success="nomenclature_id">
                     <field name="sequence" widget="handle"/>
+                    <field name="partner_id" optional="show"/>
                     <field name="name"/>
+                    <field name="dino_uom_id" string="Doc Unit" optional="show"/>
                     <field name="nomenclature_id"/>
-                    <field name="dino_uom_id" string="Doc Unit"/>
-                    <field name="warehouse_uom_id" string="Warehouse Unit"/>
-                    <field name="active"/>
+                    <field name="warehouse_uom_id" string="Warehouse Unit" optional="show"/>
+                    <field name="document_count" optional="show"/>
+                    <field name="active" optional="show"/>
                 </list>
             </field>
         </record>
