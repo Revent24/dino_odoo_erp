@@ -314,10 +314,31 @@ class DocumentJSONService:
                         supplier_nomenclature = PartnerNomenclature.create(nomenclature_vals)
                 
                 # Перевірити існуючий рядок
-                existing_spec = Specification.search([
-                    ('document_id', '=', document.id),
-                    ('name', '=', line_data['name'])
-                ], limit=1)
+                # ВАЖЛИВО: Шукаємо по sequence тільки якщо він НЕ дефолтний (10)
+                existing_spec = None
+                line_number = line_data.get('line_number', 0)
+                
+                if line_number > 0:
+                    # Шукаємо рядок з таким же sequence (якщо він був заданий раніше)
+                    existing_spec = Specification.search([
+                        ('document_id', '=', document.id),
+                        ('sequence', '=', line_number)
+                    ], limit=1)
+                    
+                    if existing_spec:
+                        _logger.info(f"✅ Found existing line by sequence={line_number}: {existing_spec.name}")
+                
+                if not existing_spec:
+                    # Якщо не знайшли по sequence - шукаємо по name + sequence=10 (дефолтний)
+                    # Це для оновлення старих рядків, які були створені без line_number
+                    existing_spec = Specification.search([
+                        ('document_id', '=', document.id),
+                        ('name', '=', line_data['name']),
+                        ('sequence', '=', 10)  # Тільки рядки з дефолтним sequence
+                    ], limit=1)
+                    
+                    if existing_spec:
+                        _logger.info(f"✅ Found existing line by name (default sequence): {existing_spec.name}")
                 
                 # Підготувати значення
                 spec_vals = {
