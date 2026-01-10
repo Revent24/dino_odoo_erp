@@ -6,6 +6,7 @@ from odoo.exceptions import UserError
 import logging
 
 _logger = logging.getLogger(__name__)
+from ..services.image_utils import prepare_inline_data, safe_truncate
 
 
 class DinoOperationDocument(models.Model):
@@ -258,89 +259,56 @@ class DinoOperationDocument(models.Model):
         image_data = None
         
         if self.import_image:
-            # Если есть изображение в поле - получаем base64
-            # fields.Binary возвращает байты, нам нужна base64 строка
-            import base64
-            if isinstance(self.import_image, bytes):
-                # Проверяем: это реальные байты изображения или это уже base64 строка закодированная как bytes?
-                # Попробуем декодировать первые байты и проверить magic bytes
-                try:
-                    # Если первые байты - это PNG/JPEG/WEBP magic bytes - это реальное изображение
-                    if (self.import_image[:4] == b'\x89PNG' or 
-                        self.import_image[:3] == b'\xff\xd8\xff' or
-                        (self.import_image[:4] == b'RIFF' and len(self.import_image) > 12 and self.import_image[8:12] == b'WEBP')):
-                        # Это реальные байты изображения - кодируем в base64
-                        image_data = base64.b64encode(self.import_image).decode('utf-8')
-                        _logger.info(f"Using image from import_image field (real image bytes): {len(image_data)} chars base64")
-                    else:
-                        # Это не изображение - возможно это base64 строка сохраненная как bytes (ASCII)
-                        # Пробуем интерпретировать как ASCII строку
-                        image_data = self.import_image.decode('ascii')
-                        _logger.info(f"Using image from import_image field (base64 as ASCII bytes): {len(image_data)} chars")
-                except Exception as e:
-                    # Если не получилось - просто кодируем
-                    image_data = base64.b64encode(self.import_image).decode('utf-8')
-                    _logger.warning(f"Using image from import_image field (fallback encode): {len(image_data)} chars, error: {e}")
-            else:
-                image_data = self.import_image
-                _logger.info(f"Using image from import_image field (already string): {len(image_data)} chars")
+            # Используем image_utils.prepare_inline_data для нормализации и определения формата
+            try:
+                inline = prepare_inline_data(self.import_image)
+                if inline:
+                    image_data = inline.get('data')
+                    _logger.info(f"Using image from import_image (mime={inline.get('mime_type')}, {len(image_data) if image_data else 0} chars)")
+                else:
+                    _logger.warning("prepare_inline_data returned None for import_image")
+            except Exception as e:
+                _logger.warning(f"prepare_inline_data error for import_image: {e}")
         else:
-            # Якщо немає зображення в полі - шукаємо в HTML
+            # Если нет изображения в поле - ищем в HTML
             import re
             img_match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', self.import_text_content or '')
-            
+
             if img_match:
                 img_src = img_match.group(1)
                 _logger.info(f"Found image in HTML: {img_src[:100]}")
-                
-                if img_src.startswith('data:image'):
-                    # Витягуємо base64 частину
-                    base64_match = re.search(r'data:image/[^;]+;base64,(.+)', img_src)
-                    if base64_match:
-                        image_data = base64_match.group(1)
-                        _logger.info(f"Extracted inline image: {len(image_data)} chars base64")
+
+                if img_src.startswith('data:'):
+                    inline = prepare_inline_data(img_src)
+                    if inline:
+                        image_data = inline.get('data')
+                        _logger.info(f"Extracted inline image from HTML (mime={inline.get('mime_type')})")
                 elif img_src.startswith('/web/image'):
-                    # Завантажуємо з attachment
                     attachment_id = None
                     id_match = re.search(r'/web/image/(\d+)', img_src)
                     if id_match:
                         attachment_id = int(id_match.group(1))
                         _logger.info(f"Found attachment ID: {attachment_id}")
-                        
+
                         Attachment = self.env['ir.attachment'].sudo()
                         attachment = Attachment.browse(attachment_id)
-                        
+
                         if attachment and attachment.exists():
-                            image_data = attachment.datas
-                            if image_data:
-                                # ✅ ВАЖЛИВО: attachment.datas може повертати bytes або base64 string
-                                if isinstance(image_data, bytes):
-                                    # Перевірити магічні байти щоб визначити чи це реальне зображення чи base64
-                                    magic_bytes = image_data[:10]
-                                    if (magic_bytes[:4] == b'\x89PNG' or 
-                                        magic_bytes[:3] == b'\xff\xd8\xff' or 
-                                        (magic_bytes[:4] == b'RIFF' and len(image_data) > 12 and image_data[8:12] == b'WEBP')):
-                                        # Це реальне зображення в байтах - конвертуємо в base64
-                                        image_data = base64.b64encode(image_data).decode('utf-8')
-                                        _logger.info(f"✅ Converted image bytes to base64: {len(image_data)} chars")
-                                    else:
-                                        # Можливо це base64 у вигляді bytes (ASCII) - спробуємо декодувати
-                                        try:
-                                            image_data = image_data.decode('ascii')
-                                            _logger.info(f"✅ Decoded base64 from ASCII bytes: {len(image_data)} chars")
-                                        except:
-                                            # На всякий випадок - закодуємо в base64
-                                            image_data = base64.b64encode(image_data).decode('utf-8')
-                                            _logger.warning(f"⚠️ Fallback encode to base64: {len(image_data)} chars")
+                            att_data = attachment.datas
+                            if att_data:
+                                inline = prepare_inline_data(att_data)
+                                if inline:
+                                    image_data = inline.get('data')
+                                    _logger.info(f"Loaded image from attachment id {attachment_id} (mime={inline.get('mime_type')})")
                                 else:
-                                    _logger.info(f"✅ Loaded base64 string from attachment: {len(image_data)} chars")
+                                    _logger.warning(f"prepare_inline_data failed for attachment {attachment_id}")
                             else:
                                 raise UserError(f'Вкладення {attachment_id} не містить даних')
                         else:
                             raise UserError(f'Вкладення з ID {attachment_id} не знайдено')
                     else:
                         raise UserError(f'Не вдається витягти ID з посилання: {img_src[:100]}')
-            
+
             # Якщо є текст в полі (і немає зображення) - використовуємо його
             if not image_data and self.import_text_content:
                 from odoo.tools import html2plaintext
@@ -388,8 +356,7 @@ class DinoOperationDocument(models.Model):
         if parse_result.get('debug_info'):
             full_request = parse_result['debug_info'].get('full_request', '')
             # Обрізаємо до 10000 символів щоб швидше
-            if len(full_request) > 10000:
-                full_request = full_request[:10000] + "\n\n... (обрізано)"
+            full_request = safe_truncate(full_request, 10000)
             self.write({'notes': full_request})
         else:
             # Якщо немає debug_info - принаймні покажемо що запит був

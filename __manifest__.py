@@ -5,7 +5,7 @@
     'description': 'Минимальный Odoo модуль: одна модель `dino.minimal`, одно поле `name` и пункт меню.',
     'author': 'Revent24',
     'category': 'Tools',
-    'depends': ['base', 'mail', 'web', 'uom'] ,  # added uom for document lines and quick-create
+    'depends': ['base', 'mail', 'web'] ,  # removed system 'uom' - using custom dino.uom
     'data': [
         'finance/views/dino_bank_views.xml',
         'finance/views/dino_bank_acc_views.xml',

@@ -1,4 +1,6 @@
 import sys
+# Ensure package root is on sys.path so absolute imports inside module work
+sys.path.insert(0, '/home/steve/OdooApps/odoo_projects/dino24_addons/dino_erp')
 import json
 import importlib.util
 

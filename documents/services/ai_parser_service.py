@@ -15,6 +15,8 @@ import logging
 import requests
 import base64
 import os
+# image_utils will be loaded lazily inside parser methods to avoid importing
+# the whole `documents` package at module import time (which requires Odoo)
 
 _logger = logging.getLogger(__name__)
 
@@ -373,19 +375,35 @@ class OpenRouterParser:
                     "type": "text",
                     "text": "Розпізнай документ на зображенні. Використовуй ТІЛЬКИ дані з цього зображення."
                 })
-                
-                # Конвертувати в base64
-                if isinstance(image_data, bytes):
-                    image_base64 = base64.b64encode(image_data).decode('utf-8')
-                else:
-                    image_base64 = image_data
-                
-                user_message_content.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/png;base64,{image_base64}"
-                    }
-                })
+
+                # Lazy-load image_utils to avoid importing the whole package at module import time
+                try:
+                    import importlib.util, os
+                    image_utils_path = os.path.join(os.path.dirname(__file__), 'image_utils.py')
+                    spec = importlib.util.spec_from_file_location('image_utils_local', image_utils_path)
+                    image_utils = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(image_utils)
+                    prepare_inline_data = getattr(image_utils, 'prepare_inline_data')
+                except Exception as e:
+                    _logger.warning(f"Failed to lazy-load image_utils: {e}")
+                    prepare_inline_data = None
+
+                if prepare_inline_data:
+                    try:
+                        inline = prepare_inline_data(image_data)
+                        if inline:
+                            mime = inline.get('mime_type', 'image/png')
+                            image_base64 = inline.get('data')
+                            user_message_content.append({
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime};base64,{image_base64}"
+                                }
+                            })
+                        else:
+                            _logger.warning("prepare_inline_data failed - skipping image part")
+                    except Exception as e:
+                        _logger.warning(f"prepare_inline_data error: {e}")
             elif text:
                 # Якщо тільки текст
                 user_message_content.append({
@@ -565,106 +583,53 @@ class GoogleGeminiParser:
         system_prompt = f"""{parsing_template}{units_str}"""
 
         # Підготувати частини запиту
-        if text:
-            # Об'єднати system prompt + документ в один part
-            full_prompt = f"{system_prompt}\n\n# DOCUMENT FOR PARSING:\n{text}"
-            parts = [{"text": full_prompt}]
-            _logger.info(f"📄 Full prompt with document: {len(full_prompt)} chars")
-        else:
-            parts = [{"text": system_prompt}]
-            _logger.info(f"📝 System prompt only: {len(system_prompt)} chars")
+        parts = []
         
+        # 1. Спочатку додати зображення (якщо є) - моделі часто краще працюють коли контекст (зображення) йде першим
         if image_data:
-            # Визначити MIME type
-            mime_type = "image/jpeg"  # За замовчуванням
-            
-            # ✅ ВАЖЛИВО: Визначити тип image_data
-            _logger.info(f"🔍 Gemini: image_data type = {type(image_data).__name__}, length = {len(image_data)}")
-            
-            # Перевірити чи це вже base64 строка (з Odoo attachment) чи байти
-            if isinstance(image_data, str):
-                # Це вже base64 string від Odoo
-                _logger.info(f"Image data is base64 string: {len(image_data)} chars")
-                _logger.info(f"First 100 chars of base64: {image_data[:100]}")
-                image_base64 = image_data
-                # Спробувати визначити MIME type з початку декодованих даних
+            # Lazy-load image_utils
+            try:
+                import importlib.util, os
+                image_utils_path = os.path.join(os.path.dirname(__file__), 'image_utils.py')
+                spec = importlib.util.spec_from_file_location('image_utils_local', image_utils_path)
+                image_utils = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(image_utils)
+                prepare_inline_data = getattr(image_utils, 'prepare_inline_data')
+            except Exception as e:
+                _logger.warning(f"Failed to lazy-load image_utils for Gemini: {e}")
+                prepare_inline_data = None
+
+            if prepare_inline_data:
                 try:
-                    decoded_start = base64.b64decode(image_data[:100])
-                    _logger.info(f"Decoded first bytes: {decoded_start[:20]}")
-                    if decoded_start[:4] == b'\x89PNG':
-                        mime_type = "image/png"
-                        _logger.info("Detected PNG image")
-                    elif decoded_start[:3] == b'\xff\xd8\xff':
-                        mime_type = "image/jpeg"
-                        _logger.info("Detected JPEG image")
-                    elif decoded_start[:4] == b'RIFF' and len(decoded_start) > 12 and decoded_start[8:12] == b'WEBP':
-                        mime_type = "image/webp"
-                        _logger.info("Detected WEBP image")
+                    # Важливо: normalize=True для зменшення розміру, але PDF не будуть змінені
+                    inline = prepare_inline_data(image_data, normalize=True)
+                    if inline:
+                        mime_type = inline.get('mime_type', 'image/jpeg')
+                        image_base64 = inline.get('data')
+                        
+                        if not image_base64:
+                            _logger.error("Generated image base64 is empty!")
+                        else:
+                            _logger.info(f"Adding image part: MIME={mime_type}, Size={len(image_base64)} chars")
+                            parts.append({
+                                "inline_data": {
+                                    "mime_type": mime_type,
+                                    "data": image_base64
+                                }
+                            })
                     else:
-                        _logger.warning(f"Unknown image format, magic bytes: {decoded_start[:20].hex()}")
+                        _logger.warning("prepare_inline_data returned None for Gemini image, skipping image part")
                 except Exception as e:
-                    _logger.error(f"Could not decode base64: {e}")
-                    raise Exception(f"Invalid base64 image data: {e}")
-            elif isinstance(image_data, bytes):
-                # Оптимізувати розмір зображення якщо надто велике
-                # Gemini підтримує до 20MB, але великі зображення обробляються довше
-                max_size_mb = 5  # Обмежимо 5MB для швидкості
-                if len(image_data) > max_size_mb * 1024 * 1024:
-                    _logger.info(f"Image size {len(image_data)/1024/1024:.2f}MB > {max_size_mb}MB, resizing...")
-                    try:
-                        from PIL import Image
-                        import io
-                        
-                        img = Image.open(io.BytesIO(image_data))
-                        # Зменшити до максимум 2048px по найбільшій стороні
-                        max_dimension = 2048
-                        if max(img.size) > max_dimension:
-                            ratio = max_dimension / max(img.size)
-                            new_size = tuple(int(dim * ratio) for dim in img.size)
-                            img = img.resize(new_size, Image.Resampling.LANCZOS)
-                            _logger.info(f"Resized to {new_size}")
-                        
-                        # Конвертувати в JPEG для економії місця
-                        output = io.BytesIO()
-                        if img.mode in ('RGBA', 'LA', 'P'):
-                            img = img.convert('RGB')
-                        img.save(output, format='JPEG', quality=85, optimize=True)
-                        image_data = output.getvalue()
-                        mime_type = "image/jpeg"
-                        _logger.info(f"Optimized image size: {len(image_data)/1024/1024:.2f}MB")
-                    except ImportError:
-                        _logger.warning("PIL not available, sending original image")
-                    except Exception as e:
-                        _logger.warning(f"Failed to optimize image: {e}, sending original")
-                
-                image_base64 = base64.b64encode(image_data).decode('utf-8')
-                # Визначити тип по magic bytes
-                if image_data[:4] == b'\x89PNG':
-                    mime_type = "image/png"
-                elif image_data[:3] == b'\xff\xd8\xff':
-                    mime_type = "image/jpeg"
-                elif image_data[:4] == b'RIFF' and image_data[8:12] == b'WEBP':
-                    mime_type = "image/webp"
-            else:
-                image_base64 = image_data
-                # Спробувати визначити з початку base64
-                try:
-                    decoded_start = base64.b64decode(image_data[:20])
-                    if decoded_start[:4] == b'\x89PNG':
-                        mime_type = "image/png"
-                    elif decoded_start[:3] == b'\xff\xd8\xff':
-                        mime_type = "image/jpeg"
-                except:
-                    pass
-            
-            _logger.info(f"Image MIME type detected: {mime_type}, base64 length: {len(image_base64)}")
-            
-            parts.append({
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": image_base64
-                }
-            })
+                    _logger.warning(f"prepare_inline_data error for Gemini: {e}")
+
+        # 2. Потім додати текстовий промпт
+        if text:
+            full_prompt = f"{system_prompt}\n\n# DOCUMENT FOR PARSING:\n{text}"
+            _logger.info(f"📄 Full prompt with document: {len(full_prompt)} chars")
+            parts.append({"text": full_prompt})
+        else:
+            _logger.info(f"📝 System prompt only: {len(system_prompt)} chars")
+            parts.append({"text": system_prompt})
         
         # Payload
         payload = {

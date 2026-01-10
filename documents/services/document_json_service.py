@@ -84,6 +84,7 @@ class DocumentJSONService:
                     'address': header_data.get('vendor_address'),
                     'phone': header_data.get('vendor_phone'),
                     'tax_system': header_data.get('tax_system'),
+                    'tax_percent': header_data.get('tax_percent'),
                 }
                 
                 result['supplier_name'] = supplier_data.get('name', 'Невідомий')
@@ -201,19 +202,9 @@ class DocumentJSONService:
                 partner = Partner.create(partner_vals)
                 _logger.info(f"✅ Created new partner: {partner.name} (EGRPOU: {edrpou})")
         else:
-            # Оновити дані партнера
-            partner_vals = {}
-            if supplier_data.get('name') and supplier_data['name'] != partner.name:
-                partner_vals['name'] = supplier_data['name']
-            if supplier_data.get('inn') and not partner.inn:
-                partner_vals['inn'] = supplier_data['ipn']
-            if supplier_data.get('address') and not partner.address:
-                partner_vals['address'] = supplier_data['address']
-            if supplier_data.get('phone') and not partner.phone:
-                partner_vals['phone'] = supplier_data['phone']
-            
-            if partner_vals:
-                partner.write(partner_vals)
+            # Партнер знайдений по ЄДРПОУ - НЕ оновлюємо дані, беремо як є
+            # (Користувач: "когда к-гент уже создан, обновлять его не нужно")
+            _logger.info(f"✅ Partner found by EGRPOU {edrpou}: {partner.name}. Update skipped.")
         
         # Обробка банківського рахунку
         if supplier_data.get('iban'):
@@ -227,19 +218,44 @@ class DocumentJSONService:
             )
         
         # Обробка системи оподаткування
-        if supplier_data.get('tax_system'):
-            TaxSystem = env['dino.tax.system']
-            tax_system = TaxSystem.search([
-                ('name', '=ilike', supplier_data['tax_system'])
-            ], limit=1)
+        TaxSystem = env['dino.tax.system']
+        tax_system = None
+        tax_percent = supplier_data.get('tax_percent')
+        tax_system_name = supplier_data.get('tax_system')
+
+        # 1. Пріоритет: Якщо відома ставка ПДВ -> Шукаємо існуючу систему з таким відсотком
+        # Щоб не плодити дублі
+        if tax_percent is not None:
+            tax_system = TaxSystem.search([('vat_rate', '=', tax_percent)], limit=1)
+        
+        # 2. Якщо по ставці не знайшли (або ставки немає), але є назва -> Шукаємо по назві
+        if not tax_system and tax_system_name:
+            tax_system = TaxSystem.search([('name', '=ilike', tax_system_name)], limit=1)
             
-            if not tax_system:
+        # 3. Якщо нічого не знайшли -> Створюємо
+        if not tax_system:
+            if tax_percent is not None:
+                # Якщо ІІ не дав назву, формуємо стандартну "Загальна система..."
+                if not tax_system_name:
+                    rate_str = f"{int(tax_percent)}" if tax_percent % 1 == 0 else f"{tax_percent}"
+                    new_name = f"Загальна система, платник ПДВ {rate_str}%"
+                else:
+                    new_name = tax_system_name
+                
                 tax_system = TaxSystem.create({
-                    'name': supplier_data['tax_system'],
+                    'name': new_name,
+                    'vat_rate': tax_percent
                 })
-            
-            if tax_system:
-                partner.write({'tax_system_id': tax_system.id})
+                _logger.info(f"Created new tax system '{new_name}' with rate {tax_percent}%")
+            elif tax_system_name:
+                # Тільки назва відома
+                tax_system = TaxSystem.create({'name': tax_system_name})
+                _logger.info(f"Created new tax system '{tax_system_name}'")
+
+        # Прив'язати до партнера (якщо ще не прив'язано або це новий партнер)
+        if tax_system and (not partner.tax_system_id or not existing_partner):
+            partner.write({'tax_system_id': tax_system.id})
+            _logger.info(f"Assigned tax system '{tax_system.name}' to partner '{partner.name}'")
         
         return partner
     

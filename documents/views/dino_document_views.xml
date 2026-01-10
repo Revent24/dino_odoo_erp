@@ -62,7 +62,7 @@
                                         <field name="price_untaxed" string="Price"/>
                                         <field name="price_tax" string="Price w/Tax" optional="hide"/>
                                         <field name="amount_untaxed" string="Subtotal" optional="hide"/>
-                                        <field name="amount_tax" string="Tax"/>
+                                        <field name="amount_tax" string="Tax" optional="hide"/>
                                         <field name="vat_rate" string="VAT %" optional="hide" readonly="1"/>
                                         <field name="amount_total" string="Total"/>
                                         <field name="description" string="Notes" optional="hide"/>
