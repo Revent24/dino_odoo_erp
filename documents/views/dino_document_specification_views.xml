@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <!-- ==============================================
+             FORM VIEW: Форма строки спецификации
+             Используется для детального редактирования строки
+             ============================================== -->
+        <record id="view_dino_operation_document_specification_form" model="ir.ui.view">
+            <field name="name">dino.operation.document.specification.form</field>
+            <field name="model">dino.operation.document.specification</field>
+            <field name="arch" type="xml">
+                <form string="Specification Line">
+                    <sheet>
+                        <div class="oe_title">
+                            <h1>
+                                <field name="name"/>
+                            </h1>
+                        </div>
+                        <!-- Основные поля: документ, порядок, продукт, единица измерения -->
+                        <group>
+                            <group>
+                                <field name="document_id" options="{'no_create': True}"/>
+                                <field name="sequence"/>
+                                <!-- product field commented out to remove hard dependency on product module -->
+                                <!-- <field name="product_id" options="{'no_create': True}"/> -->
+                            </group>
+                            <group>
+                                <field name="dino_uom_id" options="{'no_create': True}"/>
+                                <field name="currency_id" readonly="1" options="{'no_create': True}"/>
+                                <field name="quantity"/>
+                            </group>
+                        </group>
+
+                        <!-- Денежные поля: цены, суммы, НДС -->
+                        <group>
+                            <group>
+                                <field name="price_untaxed"/>
+                                <field name="amount_untaxed" readonly="1"/>
+                            </group>
+                            <group>
+                                <field name="vat_rate" readonly="1"/>
+                                <field name="price_tax"/>
+                                <field name="amount_tax" readonly="1"/>
+                            </group>
+                        </group>
+
+                        <!-- Итоговая сумма -->
+                        <group>
+                            <field name="amount_total" readonly="1" class="oe_subtotal_footer_separator"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             TREE VIEW: Список строк спецификации
+             ============================================== -->
+        <record id="view_dino_operation_document_specification_tree" model="ir.ui.view">
+            <field name="name">dino.operation.document.specification.tree</field>
+            <field name="model">dino.operation.document.specification</field>
+            <field name="arch" type="xml">
+                <list string="Specifications">
+                    <field name="document_id"/>
+                    <field name="sequence"/>
+                    <field name="name"/>
+                    <field name="quantity"/>
+                    <field name="dino_uom_id"/>
+                    <field name="price_untaxed"/>
+                    <field name="amount_untaxed"/>
+                    <field name="amount_total"/>
+                </list>
+            </field>
+        </record>
+
+        <!-- ==============================================
+             ACTION: Открытие списка строк спецификации
+             ============================================== -->
+        <record id="action_dino_operation_document_specification_list" model="ir.actions.act_window">
+            <field name="name">Specification Lines</field>
+            <field name="res_model">dino.operation.document.specification</field>
+            <field name="view_mode">list,form</field>
+        </record>
+    </data>
+</odoo>

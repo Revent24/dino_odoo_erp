@@ -140,12 +140,6 @@ class DinoOperationDocument(models.Model):
     )
     import_image_filename = fields.Char('Image Filename')
     
-    # Результат парсинга в JSON
-    ocr_result_text = fields.Text(
-        string='JSON Response',
-        help='JSON response from AI parser (for debugging)',
-        readonly=True
-    )
 
     @api.depends('specification_ids.amount_untaxed', 'specification_ids.amount_tax')
     def _compute_amounts(self):
@@ -246,23 +240,7 @@ class DinoOperationDocument(models.Model):
             'target': 'current',
         }
     
-    def action_copy_json(self):
-        """Показать JSON для копирования"""
-        self.ensure_one()
-        if not self.ocr_result_text:
-            raise UserError('JSON пустой, нечего копировать')
-        
-        # Показать notification с инструкцией
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'JSON готов к копированию',
-                'message': 'Выделите весь текст в поле JSON и нажмите Ctrl+C',
-                'type': 'info',
-                'sticky': False,
-            }
-        }
+    # JSON copy action removed (ocr_result_text field deleted)
     
     def action_import_text(self):
         """Импорт номенклатуры из текста или изображения"""
@@ -420,7 +398,7 @@ class DinoOperationDocument(models.Model):
         # Этап 2: Обработка JSON через сервис
         from ..services.document_json_service import DocumentJSONService
         
-        # Передаємо raw_json для збереження в ocr_result_text
+        # Передаємо parsed JSON в сервіс для обробки
         raw_json = parse_result.get('raw_json', None)
         result = DocumentJSONService.process_parsed_json(self, parse_result, raw_json_str=raw_json)
         
@@ -461,75 +439,4 @@ class DinoOperationDocument(models.Model):
             }
         }
     
-    def action_test_ocr(self):
-        """Тестирование OCR - просто извлечь текст из изображения"""
-        self.ensure_one()
-        
-        from ..services.tesseract_ocr_service import TesseractOCRService
-        
-        # Извлечь изображение из HTML поля или Binary поля
-        image_data = None
-        
-        if self.import_image:
-            # Прямая загрузка файла
-            image_data = self.import_image
-            _logger.info("=== OCR: Используется загруженный файл")
-            
-        elif self.import_text_content:
-            # Извлечь изображение из HTML
-            result, source_type = TesseractOCRService.extract_image_from_html(self.import_text_content)
-            
-            if source_type == 'base64':
-                image_data = result
-                _logger.info("=== OCR: Извлечено base64 изображение из HTML")
-                
-            elif source_type == 'attachment':
-                # result содержит attachment_id
-                image_data = TesseractOCRService.extract_image_from_odoo_attachment(self.env, result)
-                _logger.info(f"=== OCR: Извлечено изображение из attachment {result}")
-        
-        if not image_data:
-            raise UserError('Изображение не найдено. Вставьте скриншот или загрузите файл.')
-        
-        # Распознать текст через OCR - умное распознавание с несколькими языками
-        ocr_result = TesseractOCRService.extract_text_smart(image_data)
-        
-        if not ocr_result['success']:
-            raise UserError(f'Ошибка OCR:\n{ocr_result["error"]}')
-        
-        # Сохранить результат в поле примечаний
-        extracted_text = ocr_result['text']
-        stats = ocr_result.get('stats', {})
-        lang_used = ocr_result.get('lang_used', 'unknown')
-        
-        # Вывести результат в поле "Примечания" на вкладке Notes
-        separator = "="*60 + "\n📝 РЕЗУЛЬТАТ OCR:\n" + "="*60
-        stats_info = f"\n📊 Статистика: {stats.get('char_count', 0)} символов, {stats.get('line_count', 0)} строк"
-        stats_info += f"\n🌐 Языки: {lang_used}\n"
-        
-        # Добавить OCR текст к существующим примечаниям
-        from odoo.tools.mail import html2plaintext
-        current_notes = html2plaintext(self.notes) if self.notes else ''
-        
-        if current_notes.strip():
-            new_notes = current_notes + "\n\n" + separator + stats_info + "\n" + extracted_text
-        else:
-            new_notes = separator + stats_info + "\n" + extracted_text
-        
-        self.notes = f"<pre>{new_notes}</pre>"
-        
-        # Также сохранить в служебное поле для тестирования
-        self.ocr_result_text = extracted_text
-        
-        # Перезагрузить форму на вкладку Notes
-        return {
-            'type': 'ir.actions.act_window',
-            'res_model': 'dino.operation.document',
-            'res_id': self.id,
-            'view_mode': 'form',
-            'target': 'current',
-            'context': {
-                **self.env.context,
-                'ocr_success_message': f'✅ OCR завершён! Распознано {len(extracted_text)} символов. Результат в примечаниях.',
-            },
-        }
+    

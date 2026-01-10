@@ -22,7 +22,7 @@ class DocumentJSONService:
         
         :param document: запис dino.operation.document
         :param json_data: dict з даними від парсера {'document': {...}, 'supplier': {...}, 'lines': [...]}
-        :param raw_json_str: оригінальний JSON рядок від AI (для збереження в ocr_result_text)
+        :param raw_json_str: оригінальний JSON рядок від AI (debug, optional)
         :return: dict з результатами обробки
         """
         import time
@@ -39,15 +39,7 @@ class DocumentJSONService:
         }
         
         try:
-            # 0. Зберегти оригінальний JSON в поле ocr_result_text
-            if raw_json_str:
-                import json
-                # Форматувати JSON для кращої читабельності
-                try:
-                    formatted_json = json.dumps(json.loads(raw_json_str), indent=2, ensure_ascii=False)
-                    document.ocr_result_text = formatted_json
-                except:
-                    document.ocr_result_text = raw_json_str
+            # Note: storing raw JSON in document was removed (field deleted)
             
             # 1. Обробка header: номер, дата та тип документа
             if json_data.get('header'):
@@ -155,21 +147,59 @@ class DocumentJSONService:
             _logger.warning("No EDRPOU provided for supplier")
             return None
         
-        # Пошук партнера по ЄДРПОУ
+        # Пошук партнера по ЄДРПОУ (захист від дублювання)
         Partner = env['dino.partner']
         partner = Partner.search([('egrpou', '=', edrpou)], limit=1)
         
         if not partner:
             # Створити нового партнера
-            partner_vals = {
-                'name': supplier_data.get('name', f'Partner {edrpou}'),
-                'egrpou': edrpou,
-                'inn': supplier_data.get('ipn'),
-                'address': supplier_data.get('address'),
-                'phone': supplier_data.get('phone'),
-            }
-            partner = Partner.create(partner_vals)
-            _logger.info(f"Created new partner: {partner.name}")
+            # ПРІОРИТЕТ: Спочатку спробувати отримати дані з реєстру по ЄДРПОУ
+            partner_vals = {'egrpou': edrpou}
+            
+            # 🔍 Спроба 1: API запит до реєстру
+            registry_data = {}
+            try:
+                from odoo.addons.dino_erp.api_integration.services.partners_service import fetch_partner_registry_data
+                _logger.info(f"🌐 Fetching registry data for EGRPOU: {edrpou}")
+                registry_data = fetch_partner_registry_data(edrpou)
+                
+                if registry_data:
+                    _logger.info(f"✅ Registry data received: {list(registry_data.keys())}")
+                    partner_vals.update(registry_data)
+                else:
+                    _logger.warning(f"⚠️ No registry data for EGRPOU: {edrpou}")
+            except Exception as e:
+                _logger.warning(f"⚠️ Failed to fetch registry for {edrpou}: {e}")
+            
+            # 🔍 Спроба 2: Якщо не отримали name з реєстру - взяти з AI
+            if 'name' not in partner_vals or not partner_vals['name']:
+                ai_name = supplier_data.get('name')
+                if ai_name:
+                    # Записати назву з AI в ВСІ поля назви
+                    partner_vals['name'] = ai_name
+                    partner_vals['full_name'] = ai_name  # Повна назва = назва з AI
+                    partner_vals['name_short'] = ai_name  # Коротка назва = назва з AI
+                    _logger.info(f"📝 Using AI name (full + short): {ai_name}")
+                else:
+                    partner_vals['name'] = f'Partner {edrpou}'
+                    _logger.warning(f"⚠️ No name from API or AI, using default: Partner {edrpou}")
+            
+            # Додати інші дані з AI (якщо не прийшли з реєстру)
+            if supplier_data.get('ipn') and 'inn' not in partner_vals:
+                partner_vals['inn'] = supplier_data['ipn']
+            if supplier_data.get('address') and 'address' not in partner_vals:
+                partner_vals['address'] = supplier_data['address']
+            if supplier_data.get('phone') and 'phone' not in partner_vals:
+                partner_vals['phone'] = supplier_data['phone']
+            
+            # ПЕРЕВІРКА: Останній пошук перед створенням (захист від race condition)
+            existing = Partner.search([('egrpou', '=', edrpou)], limit=1)
+            if existing:
+                _logger.warning(f"⚠️ Partner with EGRPOU {edrpou} already exists (race condition), using existing")
+                partner = existing
+            else:
+                partner = Partner.create(partner_vals)
+                _logger.info(f"✅ Created new partner: {partner.name} (EGRPOU: {edrpou})")
         else:
             # Оновити дані партнера
             partner_vals = {}

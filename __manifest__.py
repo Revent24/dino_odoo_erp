@@ -24,8 +24,8 @@
         'documents/wizard/import_specification_excel_views.xml',
         'documents/views/dino_document_type_views.xml',
         'documents/views/dino_parser_agent_views.xml',
-        'documents/views/dino_operation_document_views.xml',
-        'documents/views/dino_operation_document_specification_views.xml',
+        'documents/views/dino_document_views.xml',
+        'documents/views/dino_document_specification_views.xml',
         'documents/views/dino_document_attachment_views.xml',
         'documents/views/dino_nomenclature_quick_create.xml',
 

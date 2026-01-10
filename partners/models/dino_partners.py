@@ -256,20 +256,75 @@ class DinoPartner(models.Model):
         Can be called for a recordset. Uses external API
         `https://adm.tools/action/gov/api/?egrpou=<egrpou>` and parses XML response.
         """
-        # Use service from api_integration
+        from odoo.exceptions import UserError
         from odoo.addons.dino_erp.api_integration.services.partners_service import fetch_partner_registry_data
+        
+        updated = 0
+        errors = []
         
         for rec in self:
             okpo = (rec.egrpou or '').strip()
             if not okpo:
-                logging.getLogger(__name__).debug('No EGRPOU for partner %s (%s), skip', rec.id, rec.name)
+                _logger.debug('No EGRPOU for partner %s (%s), skip', rec.id, rec.name)
+                errors.append(f'{rec.name}: відсутній ЄДРПОУ')
                 continue
+            
             try:
+                _logger.info(f'🔄 Updating partner {rec.name} (EGRPOU: {okpo}) from registry...')
                 vals = fetch_partner_registry_data(okpo)
+                
+                _logger.info(f"📦 Received vals from API: {vals}")
+                
                 if vals:
+                    _logger.info(f"✍️ Writing to partner {rec.id}: {list(vals.keys())}")
                     rec.write(vals)
-            except Exception:
-                logging.getLogger(__name__).exception('Failed to update partner %s from registry', rec.id)
+                    updated += 1
+                    _logger.info(f'✅ Updated partner {rec.name}: {list(vals.keys())}')
+                else:
+                    errors.append(f'{rec.name} (ЄДРПОУ {okpo}): дані не знайдено в реєстрі')
+                    _logger.warning(f'❌ No data returned for partner {rec.name} (EGRPOU: {okpo})')
+                    
+            except Exception as e:
+                error_msg = str(e)
+                errors.append(f'{rec.name} (ЄДРПОУ {okpo}): {error_msg}')
+                _logger.exception(f'Failed to update partner {rec.id} ({rec.name}): {e}')
+        
+        # Показати результат користувачу
+        if updated > 0 and not errors:
+            # Оновити форму після успішного оновлення
+            self.env['bus.bus']._sendone(self.env.user.partner_id, 'simple_notification', {
+                'type': 'success',
+                'title': '✅ Успішно оновлено',
+                'message': f'Оновлено {updated} контрагент(ів) з реєстру',
+                'sticky': False,
+            })
+            # Повернути action для перезавантаження форми
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'reload',
+            }
+        elif updated > 0 and errors:
+            self.env['bus.bus']._sendone(self.env.user.partner_id, 'simple_notification', {
+                'type': 'warning',
+                'title': '⚠️ Частково оновлено',
+                'message': f'Оновлено: {updated}\nПомилки: {len(errors)}\n\n' + '\n'.join(errors[:3]),
+                'sticky': True,
+            })
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'reload',
+            }
+        elif errors:
+            return {
+                'type': 'ir.actions.client',
+                'tag': 'display_notification',
+                'params': {
+                    'title': '❌ Помилка оновлення',
+                    'message': '\n'.join(errors[:5]),
+                    'type': 'danger',
+                    'sticky': True,
+                }
+            }
 
     @api.model
     def create(self, vals):

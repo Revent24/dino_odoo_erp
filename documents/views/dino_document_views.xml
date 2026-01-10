@@ -62,39 +62,37 @@
                                         <field name="price_untaxed" string="Price"/>
                                         <field name="price_tax" string="Price w/Tax" optional="hide"/>
                                         <field name="amount_untaxed" string="Subtotal" optional="hide"/>
-                                        <field name="amount_tax" string="Tax" optional="hide"/>
+                                        <field name="amount_tax" string="Tax"/>
                                         <field name="vat_rate" string="VAT %" optional="hide" readonly="1"/>
                                         <field name="amount_total" string="Total"/>
                                         <field name="description" string="Notes" optional="hide"/>
                                     </list>
                                 </field>
-                                
-                                <!-- Итоги: Сумма без НДС, НДС, Общая сумма (показывать только на вкладке Nomenclature) -->
-                                <div class="oe_subtotal_wrapper">
+
+                                <!-- Итоги: Сумма без НДС, НДС, Общая сумма (выровнено справа) -->
                                     <group>
-                                        <group/>
+                                        <group>
+                                        </group>
 
                                         <group class="oe_subtotal_footer oe_right">
-                                            <field name="amount_untaxed"
-                                                   widget="monetary"
-                                                   options="{'currency_field': 'currency_id'}"/>
 
-                                            <field name="amount_tax"
-                                                   widget="monetary"
-                                                   options="{'currency_field': 'currency_id'}"/>
-
-                                            <field name="amount_total"
-                                                   class="oe_subtotal_footer_separator"
-                                                   widget="monetary"
-                                                   options="{'currency_field': 'currency_id'}"/>
+                                            <field name="amount_total" 
+                                                class="oe_subtotal_footer_separator" 
+                                                widget="monetary" 
+                                                options="{'currency_field': 'currency_id'}"/>
+                                            
+                                            <field name="amount_tax" 
+                                                widget="monetary" 
+                                                options="{'currency_field': 'currency_id'}"/>
+                        
                                         </group>
                                     </group>
                                     <div class="oe_clear"/>
-                                </div>
+
                             </page>
 
                             <!-- Импорт из текста -->
-                            <page string="Import Text" name="import_text">
+                            <page string="Source document" name="import_text">
                                 <group>
                                     <group>
                                         <field name="parser_agent_id" 
@@ -152,7 +150,7 @@
                                         <strong>📎 Как импортировать номенклатуру:</strong>
                                         <ol style="margin: 5px 0 0 0; padding-left: 20px;">
                                             <li>Нажмите "Добавить строку"</li>
-                                            <li>Загрузите файл (Excel)</li>
+                                            <li>Нагрузите файл (Excel)</li>
                                             <li>Выберите тип парсера (Sapriz для счетов 1С)</li>
                                             <li>Нажмите кнопку "Import" справа</li>
                                             <li>Система автоматически найдет или создаст позиции в справочнике контрагента</li>
@@ -194,8 +192,10 @@
                             <page string="Notes" name="notes">
                                 <field name="notes"/>
                             </page>
-                            
+
                         </notebook>
+
+
                     </sheet>
                     <chatter/>
                 </form>

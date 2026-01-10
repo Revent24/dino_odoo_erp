@@ -98,7 +98,10 @@ def fetch_partner_registry_data(egrpou):
     def _att(name):
         """Get attribute value or False"""
         v = company.get(name)
-        return v if v is not None else False
+        # Якщо значення порожній рядок - повернути False (щоб не перезаписувати існуючі дані)
+        if v is not None and v.strip():
+            return v.strip()
+        return False
 
     vals = {}
     vals['full_name'] = _att('name') or False
@@ -111,6 +114,8 @@ def fetch_partner_registry_data(egrpou):
     vals['kved_number'] = _att('kved_number') or False
     vals['inn'] = _att('inn') or False
     vals['egrpou'] = _att('egrpou') or okpo
+
+    _logger.info(f"📊 Parsed XML attributes: {vals}")
 
     # Parse dates
     df = _parse_date_str(_att('date_from'))
