@@ -7,6 +7,8 @@ import requests
 from odoo import models, fields, _, api
 from odoo.osv import expression
 
+_logger = logging.getLogger(__name__)
+
 
 class DinoPartner(models.Model):
     _name = 'dino.partner'

@@ -409,11 +409,18 @@ class OpenRouterParser:
                 ]
             }
             
-            # 🔍 DEBUG MODE: Якщо debug_only=True, повернути тільки debug_info БЕЗ запиту
+            # 🔍 Зберегти інформацію про запит для діагностики (завжди)
+            if len(user_message_content) > 1:
+                # Якщо декілька частин (текст + зображення) - показуємо всі
+                user_text = "\n".join([item.get("text", "[IMAGE]") for item in user_message_content])
+            else:
+                # Якщо одна частина - витягуємо текст
+                user_text = user_message_content[0].get("text", "")
+            full_request_text = f"{system_prompt}\n\n{user_text}"
+            result['debug_info'] = {'full_request': full_request_text}
+            
+            # 🔍 DEBUG MODE: Якщо debug_only=True, повернути БЕЗ запиту
             if debug_only:
-                user_text = user_message_content[0]["text"] if isinstance(user_message_content, list) else user_message_content
-                full_request_text = f"{system_prompt}\n\n{user_text}"
-                result['debug_info'] = {'full_request': full_request_text}
                 result['success'] = True
                 result['errors'] = ['DEBUG MODE']
                 return result
@@ -550,7 +557,7 @@ class GoogleGeminiParser:
         if units_list:
             # Обмежити до 20 одиниць для економії токенів
             units_display = units_list[:20]
-            units_str = f"\n\n#Units template: {', '.join(units_display)}"
+            units_str = f"\n\n#Units template: {'; '.join(units_display)}"
             if len(units_list) > 20:
                 units_str += f" (+{len(units_list)-20})"
         
@@ -571,7 +578,34 @@ class GoogleGeminiParser:
             # Визначити MIME type
             mime_type = "image/jpeg"  # За замовчуванням
             
-            if isinstance(image_data, bytes):
+            # ✅ ВАЖЛИВО: Визначити тип image_data
+            _logger.info(f"🔍 Gemini: image_data type = {type(image_data).__name__}, length = {len(image_data)}")
+            
+            # Перевірити чи це вже base64 строка (з Odoo attachment) чи байти
+            if isinstance(image_data, str):
+                # Це вже base64 string від Odoo
+                _logger.info(f"Image data is base64 string: {len(image_data)} chars")
+                _logger.info(f"First 100 chars of base64: {image_data[:100]}")
+                image_base64 = image_data
+                # Спробувати визначити MIME type з початку декодованих даних
+                try:
+                    decoded_start = base64.b64decode(image_data[:100])
+                    _logger.info(f"Decoded first bytes: {decoded_start[:20]}")
+                    if decoded_start[:4] == b'\x89PNG':
+                        mime_type = "image/png"
+                        _logger.info("Detected PNG image")
+                    elif decoded_start[:3] == b'\xff\xd8\xff':
+                        mime_type = "image/jpeg"
+                        _logger.info("Detected JPEG image")
+                    elif decoded_start[:4] == b'RIFF' and len(decoded_start) > 12 and decoded_start[8:12] == b'WEBP':
+                        mime_type = "image/webp"
+                        _logger.info("Detected WEBP image")
+                    else:
+                        _logger.warning(f"Unknown image format, magic bytes: {decoded_start[:20].hex()}")
+                except Exception as e:
+                    _logger.error(f"Could not decode base64: {e}")
+                    raise Exception(f"Invalid base64 image data: {e}")
+            elif isinstance(image_data, bytes):
                 # Оптимізувати розмір зображення якщо надто велике
                 # Gemini підтримує до 20MB, але великі зображення обробляються довше
                 max_size_mb = 5  # Обмежимо 5MB для швидкості
@@ -642,11 +676,15 @@ class GoogleGeminiParser:
             }
         }
         
-        # 🔍 ДІАГНОСТИКА: Зберегти ПОВНИЙ текст запиту для аналізу
-        if debug_only:
-            # Тільки для debug mode збираємо повний текст
-            full_request_text = parts[0]['text'] if parts and 'text' in parts[0] else ""
-            result['debug_info'] = {'full_request': full_request_text}
+        # 🔍 ДІАГНОСТИКА: Зберегти ПОВНИЙ текст запиту для аналізу (ЗАВЖДИ)
+        full_request_parts = []
+        for part in parts:
+            if 'text' in part:
+                full_request_parts.append(part['text'])
+            elif 'inline_data' in part:
+                full_request_parts.append(f"[IMAGE: {part['inline_data']['mime_type']}]")
+        full_request_text = "\n\n".join(full_request_parts)
+        result['debug_info'] = {'full_request': full_request_text}
         
         # 🔍 DEBUG MODE: Якщо debug_only=True, повернути тільки debug_info БЕЗ запиту
         if debug_only:
