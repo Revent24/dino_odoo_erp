@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+  <data noupdate="1">
+    <!-- Default singleton Nextcloud client used by actions and UI -->
+    <record id="nextcloud_client_default" model="nextcloud.client">
+      <field name="name">Default Nextcloud Connection</field>
+    </record>
+  </data>
+</odoo>
