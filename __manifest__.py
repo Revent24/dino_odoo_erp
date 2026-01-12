@@ -6,7 +6,14 @@
     'author': 'Revent24',
     'category': 'Tools',
     'depends': ['base', 'mail', 'web'] ,  # removed system 'uom' - using custom dino.uom
+    'external_dependencies': {
+        'python': ['webdavclient3'],
+    },
     'data': [
+        # Nextcloud integration
+        'nextcloud/security/ir.model.access.csv',
+        'nextcloud/views/nextcloud_views.xml',
+
         'finance/views/dino_bank_views.xml',
         'finance/views/dino_bank_acc_views.xml',
         'finance/views/dino_bank_transaction_views.xml',
@@ -59,13 +66,13 @@
         'api_integration/security/ir.model.access.csv',
         'api_integration/views/dino_api_menu.xml',
         'api_integration/views/dino_api_endpoint_views.xml',
+        'core/data/nextcloud_client_data.xml',
         'core/main_menu_actions.xml',
         'core/main_menu.xml',
     ],
 
     'application': True,
     'installable': True,
-    'post_init_hook': 'post_init_hook',
     
     'images': ['core/menu_icons/crm.png'],
 }
