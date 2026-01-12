@@ -9,8 +9,8 @@
     'depends': ['base'],
     'external_dependencies': {},
     'data': [
-        'nextcloud/data/nextcloud_client_data.xml',
         'security/ir.model.access.csv',
+        'data/nextcloud_client_data.xml',
         'views/nextcloud_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
