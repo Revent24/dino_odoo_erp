@@ -11,8 +11,16 @@
                     <button name="action_test_connection" string="Test Connection" type="object" class="oe_highlight"/>
                 </header>
                 <sheet>
+                        <widget name="web_ribbon" title="Connected" bg_color="bg-success" invisible="state != 'confirmed'"/>
+                        <widget name="web_ribbon" title="Error" bg_color="bg-warning" invisible="state != 'error'"/>
+                        <widget name="web_ribbon" title="Draft" bg_color="bg-danger" invisible="state != 'draft'"/>
+                    <div class="oe_title">
+                         <h1>
+                                <field name="name" placeholder="Connection Name"
+                                string="Name" required="1"/>
+                        </h1>
+                    </div>
                     <group>
-                        <field name="name"/>
                         <field name="url"/>
                         <field name="username"/>
                         <field name="password" password="True"/>

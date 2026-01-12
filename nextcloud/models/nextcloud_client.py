@@ -32,26 +32,47 @@ class NextcloudClient(models.Model):
             client = self._get_client()
             client.list('/')  # Простой тест соединения
             self.state = 'confirmed'
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Success',
-                    'message': 'Connection to Nextcloud successful',
-                    'type': 'success'
+            return [
+                {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Success',
+                        'message': 'Connection to Nextcloud successful',
+                        'type': 'success'
+                    }
+                },
+                {
+                    'type': 'ir.actions.act_window',
+                    'name': 'Nextcloud Clients',
+                    'res_model': 'nextcloud.client',
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'target': 'current',
                 }
-            }
+            ]
         except Exception as e:
             self.state = 'error'
-            return {
-                'type': 'ir.actions.client',
-                'tag': 'display_notification',
-                'params': {
-                    'title': 'Error',
-                    'message': f'Connection failed: {str(e)}',
-                    'type': 'danger'
+            return [
+                {
+                   'type': 'ir.actions.act_window',
+                    'name': 'Nextcloud Clients',
+                    'res_model': 'nextcloud.client',
+                    'res_id': self.id,
+                    'view_mode': 'form',
+                    'target': 'current',
+                },
+                {
+                    'type': 'ir.actions.client',
+                    'tag': 'display_notification',
+                    'params': {
+                        'title': 'Error',
+                        'message': f'Connection failed: {str(e)}',
+                        'type': 'danger'
+                        }
                 }
-            }
+
+            ]
 
     def create_folder(self, remote_path):
         """Создает папку (включая вложенные)"""
@@ -146,6 +167,7 @@ class NextcloudClient(models.Model):
             'type': 'ir.actions.act_window',
             'name': 'Nextcloud Clients',
             'res_model': 'nextcloud.client',
-            'view_mode': 'list,form',
+            'res_id': rec.id,
+            'view_mode': 'form',
             'target': 'current',
         }
