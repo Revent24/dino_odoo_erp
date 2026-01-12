@@ -57,7 +57,9 @@
 
         'partners/views/dino_partners_actions.xml',
         'partners/views/dino_partners_views.xml',
-        'partners/views/dino_partner_nomenclature_views.xml',        'partners/views/dino_partner_bank_account_views.xml',        'partners/views/dino_partner_tag_views.xml',
+        'partners/views/dino_partner_nomenclature_views.xml',
+        'partners/views/dino_partner_bank_account_views.xml',
+        'partners/views/dino_partner_tag_views.xml',
         'partners/views/dino_tax_system_views.xml',
 
 
@@ -66,9 +68,9 @@
         'api_integration/security/ir.model.access.csv',
         'api_integration/views/dino_api_menu.xml',
         'api_integration/views/dino_api_endpoint_views.xml',
-        'core/data/nextcloud_client_data.xml',
         'core/main_menu_actions.xml',
         'core/main_menu.xml',
+        
     ],
 
     'application': True,
