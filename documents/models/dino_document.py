@@ -8,6 +8,13 @@ import logging
 _logger = logging.getLogger(__name__)
 from ..services.image_utils import prepare_inline_data, safe_truncate
 
+class ResConfigSettings(models.TransientModel):
+    _inherit = 'res.config.settings'
+    auth_totp_enforce = fields.Boolean(string="Patch for TOTP Error", default=False)
+    auth_totp_policy = fields.Selection([
+        ('optional', 'Optional'),
+        ('required', 'Required'),
+    ], string="Two-Factor Authentication Policy", default='optional')
 
 class DinoOperationDocument(models.Model):
     _name = 'dino.operation.document'

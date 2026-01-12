@@ -6,7 +6,7 @@
             <field name="name">dino.partner.nomenclature.list</field>
             <field name="model">dino.partner.nomenclature</field>
             <field name="arch" type="xml">
-                <list string="Partner Nomenclature" editable="bottom" 
+                <list string="Partner Nomenclature" editable="bottom" create="0"
                     decoration-danger="document_count == 0" 
                     decoration-muted="active == False" 
                     decoration-success="nomenclature_id">

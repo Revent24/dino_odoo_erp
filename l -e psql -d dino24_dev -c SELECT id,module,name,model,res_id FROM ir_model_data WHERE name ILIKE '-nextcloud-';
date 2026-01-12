@@ -1,0 +1,44 @@
+   id   |  module   |                     name                      |           model           | res_id 
+--------+-----------+-----------------------------------------------+---------------------------+--------
+ 932377 | base      | module_nextcloud                              | ir.module.module          |    733
+ 932378 | nextcloud | model_nextcloud_client                        | ir.model                  |   1819
+ 932379 | nextcloud | field_nextcloud_client__id                    | ir.model.fields           |  29395
+ 932380 | nextcloud | field_nextcloud_client__display_name          | ir.model.fields           |  29396
+ 932381 | nextcloud | field_nextcloud_client__name                  | ir.model.fields           |  29397
+ 932382 | nextcloud | field_nextcloud_client__url                   | ir.model.fields           |  29398
+ 932383 | nextcloud | field_nextcloud_client__username              | ir.model.fields           |  29399
+ 932384 | nextcloud | field_nextcloud_client__password              | ir.model.fields           |  29400
+ 932385 | nextcloud | field_nextcloud_client__state                 | ir.model.fields           |  29401
+ 932386 | nextcloud | field_nextcloud_client__create_uid            | ir.model.fields           |  29402
+ 932387 | nextcloud | field_nextcloud_client__create_date           | ir.model.fields           |  29403
+ 932388 | nextcloud | field_nextcloud_client__write_uid             | ir.model.fields           |  29404
+ 932389 | nextcloud | field_nextcloud_client__write_date            | ir.model.fields           |  29405
+ 932390 | nextcloud | selection__nextcloud_client__state__draft     | ir.model.fields.selection |   6061
+ 932391 | nextcloud | selection__nextcloud_client__state__confirmed | ir.model.fields.selection |   6062
+ 932392 | nextcloud | selection__nextcloud_client__state__error     | ir.model.fields.selection |   6063
+ 932393 | nextcloud | access_nextcloud_client                       | ir.model.access           |   1859
+ 932394 | nextcloud | view_nextcloud_client_form                    | ir.ui.view                |   3945
+ 932395 | nextcloud | view_nextcloud_client_tree                    | ir.ui.view                |   3946
+ 934304 | dino_erp  | menu_dino_nextcloud_clients                   | ir.ui.menu                |    718
+ 935391 | dino_erp  | model_nextcloud_client                        | ir.model                  |   1819
+ 935994 | dino_erp  | field_nextcloud_client__id                    | ir.model.fields           |  29395
+ 935995 | dino_erp  | field_nextcloud_client__display_name          | ir.model.fields           |  29396
+ 935996 | dino_erp  | field_nextcloud_client__name                  | ir.model.fields           |  29397
+ 935997 | dino_erp  | field_nextcloud_client__url                   | ir.model.fields           |  29398
+ 935998 | dino_erp  | field_nextcloud_client__username              | ir.model.fields           |  29399
+ 935999 | dino_erp  | field_nextcloud_client__password              | ir.model.fields           |  29400
+ 936000 | dino_erp  | field_nextcloud_client__state                 | ir.model.fields           |  29401
+ 936001 | dino_erp  | field_nextcloud_client__create_uid            | ir.model.fields           |  29402
+ 936002 | dino_erp  | field_nextcloud_client__create_date           | ir.model.fields           |  29403
+ 936003 | dino_erp  | field_nextcloud_client__write_uid             | ir.model.fields           |  29404
+ 936004 | dino_erp  | field_nextcloud_client__write_date            | ir.model.fields           |  29405
+ 936161 | dino_erp  | selection__nextcloud_client__state__draft     | ir.model.fields.selection |   6061
+ 936162 | dino_erp  | selection__nextcloud_client__state__confirmed | ir.model.fields.selection |   6062
+ 936163 | dino_erp  | selection__nextcloud_client__state__error     | ir.model.fields.selection |   6063
+ 936362 | dino_erp  | access_nextcloud_client                       | ir.model.access           |   1860
+ 936363 | dino_erp  | view_nextcloud_client_form                    | ir.ui.view                |   3947
+ 936364 | dino_erp  | view_nextcloud_client_tree                    | ir.ui.view                |   3948
+ 978665 | dino_erp  | nextcloud_client_default                      | nextcloud.client          |      5
+ 979613 | dino_erp  | action_nextcloud_client                       | ir.actions.act_window     |   1143
+(40 rows)
+

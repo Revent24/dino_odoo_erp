@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_nextcloud_client_form" model="ir.ui.view">
+        <field name="name">nextcloud.client.form</field>
+        <field name="model">nextcloud.client</field>
+        <field name="arch" type="xml">
+            <form string="Nextcloud Client" 
+            create="0" delete="0" sidebar="False" options="{'mode': 'edit'}">
+                <header>
+                    <button name="action_test_connection" string="Test Connection" type="object" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="url"/>
+                        <field name="username"/>
+                        <field name="password" password="True"/>
+                        <field name="state" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_nextcloud_client_tree" model="ir.ui.view">
+        <field name="name">nextcloud.client.list</field>
+        <field name="model">nextcloud.client</field>
+        <field name="arch" type="xml">
+            <list string="Nextcloud Clients" create="0">
+                <field name="name"/>
+                <field name="url"/>
+                <field name="username"/>
+                <field name="state"/>
+            </list>
+        </field>
+    </record>
+</odoo>

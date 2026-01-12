@@ -15,7 +15,7 @@ cd ~/OdooApps/odoo19
 python3 -m odoo server -d dino24_dev --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
 
 # Запустить сервер с принудительным обновлением модуля dino_erp
-source ~/OdooApps/odoo19-venv/bin/activate
+source ~/OdooApps/odoo_projects/dino24_addons/.venv/bin/activate
 cd ~/OdooApps/odoo19
 python3 -m odoo server -d dino24_dev -u dino_erp --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
 
@@ -25,6 +25,9 @@ python3 -m odoo server -d dino24_dev --addons-path=addons,../odoo_projects/dino2
 
 # Запустить сервер с принудительным обновлением модуля dino_erp_operations
 python3 -m odoo server -d dino24_dev -u dino_erp_vendors --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
+
+
+
 
 
 
@@ -51,3 +54,10 @@ python3 -m odoo --addons-path=addons,../odoo_projects/dino24_addons i18n export 
 # Импорт переводов в базу данных (с перезаписью)
 python3 -m odoo server -d dino24_dev -u dino_erp_stock --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070 --i18n-overwrite
 ```
+
+
+Установка webdavclient3
+
+cd /home/steve/OdooApps/odoo_projects/dino24_addons/dino_erp
+source .venv/bin/activate  # или как называется твоя папка venv
+pip install webdavclient3

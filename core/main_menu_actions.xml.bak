@@ -211,11 +211,13 @@
    </record>
 
     <!-- Action for Nextcloud Clients -->
-    <record id="action_nextcloud_client" model="ir.actions.server">
-        <field name="name">Open Nextcloud Client</field>
-        <field name="state">code</field>
-        <field name="code">action = env['nextcloud.client'].get_action_open_client()</field>
-    </record> 
+    <record id="action_nextcloud_client" model="ir.actions.act_window">
+        <field name="name">Nextcloud Clients</field>
+        <field name="res_model">nextcloud.client</field>
+        <field name="view_mode">form</field>
+        <field name="res_id" eval="env['nextcloud.client'].search([], limit=1).id"/>
+        <field name="target">current</field>
+    </record>
 
 
   </data>
