@@ -2,6 +2,7 @@ from odoo import models, fields, api
 from odoo.exceptions import UserError
 import logging
 from email.utils import parsedate_to_datetime
+from urllib.parse import unquote
 
 try:
     from webdav3.client import Client
@@ -23,6 +24,13 @@ class NextcloudClient(models.Model):
         ('error', 'Error')
     ], default='draft')
 
+    # Поле для выбора стартовой папки
+    root_folder_id = fields.Many2one(
+        'nextcloud.file', 
+        string='Main Folder',
+        domain="[('client_id', '=', id), ('file_type', '=', 'dir')]"
+    )
+
     def _get_client(self):
         """Инициализация клиента WebDAV"""
         options = {
@@ -39,6 +47,9 @@ class NextcloudClient(models.Model):
             client = self._get_client()
             client.list('/')  # Простой тест соединения
             self.state = 'confirmed'
+            # После успешного соединения загружаем папки для выбора
+            self.action_fetch_folders()
+            self.env.cr.commit()  # Сохраняем изменения перед открытием формы
             return [
                 {
                     'type': 'ir.actions.client',
@@ -91,6 +102,14 @@ class NextcloudClient(models.Model):
             return True
         except Exception as e:
             raise UserError(f"Ошибка WebDAV: {str(e)}")
+
+    def action_fetch_folders(self):
+        """Метод для загрузки только структуры папок, чтобы пользователь мог выбрать одну"""
+        self.ensure_one()
+        # Синхронизируем только если Main Folder не выбрана
+        if not self.root_folder_id:
+            self.action_sync_files() 
+        return True
 
     def list_files(self, path='/'):
         """Возвращает нормальный список имен файлов вместо сырого XML"""
@@ -180,29 +199,75 @@ class NextcloudClient(models.Model):
         }
 
     def action_sync_files(self):
+        _logger = logging.getLogger(__name__)
         for rec in self:
-            if not Client:
-                raise UserError("Python package 'webdav3' is not installed on the server.")
             client = rec._get_client()
+            
+            # 1. Определяем относительный путь для WebDAV
+            sync_path = '/'
+            parent_id = False
+            
+            if rec.root_folder_id:
+                parent_id = rec.root_folder_id.id
+                # Очищаем путь от системного префикса Nextcloud
+                prefix = f'/remote.php/dav/files/{rec.username}/'
+                sync_path = rec.root_folder_id.path.replace(prefix, '').rstrip('/')
+                if not sync_path: sync_path = '/'
+
+            _logger.info(f"Syncing path: {sync_path}")
+
             try:
-                files_info = client.list(get_info=True)
+                # get_info=True вернет fileid, etag и прочее
+                files_info = client.list(sync_path, get_info=True)
             except Exception as e:
-                raise UserError("Ошибка синхронизации файлов: %s" % e)
-            # Удаляем старые записи для этого клиента
-            self.env['nextcloud.file'].search([('client_id', '=', rec.id)]).unlink()
+                _logger.error(f"WebDAV Error: {e}")
+                continue
+
+            existing_files = self.env['nextcloud.file'].search([
+                ('client_id', '=', rec.id),
+                ('parent_id', '=', parent_id)
+            ])
+            
+            current_paths = set()
             for info in files_info:
-                if info.get('path') == '/':  # пропускаем корень
+                item_path = info.get('path', '')
+                
+                # Пропускаем саму папку поиска
+                if item_path.strip('/') == sync_path.strip('/'):
                     continue
-                name = info['path'].split('/')[-2] if info.get('isdir') else info['path'].split('/')[-1]
-                self.env['nextcloud.file'].create({
-                    'name': name,
-                    'path': info.get('path'),
+                    
+                # Формируем системный путь для БД
+                if item_path.startswith('/remote.php/dav/files/'):
+                    full_path = item_path
+                else:
+                    full_path = f'/remote.php/dav/files/{rec.username}/{item_path.lstrip("/")}' if item_path else f'/remote.php/dav/files/{rec.username}/'
+                current_paths.add(full_path)
+                
+                # Определяем имя файла/папки
+                if item_path.startswith('/remote.php/dav/files/'):
+                    relative_path = item_path.replace(f'/remote.php/dav/files/{rec.username}/', '', 1).rstrip('/')
+                    name = relative_path.split('/')[-1] if relative_path else ''
+                else:
+                    name = item_path.rstrip('/').split('/')[-1] if item_path else ''
+                
+                vals = {
+                    'name': unquote(name),
+                    'path': full_path,
                     'file_type': 'dir' if info.get('isdir') else 'file',
                     'size': float(info.get('size') or 0) / 1024 / 1024,
                     'last_modified': parsedate_to_datetime(info.get('modified')).replace(tzinfo=None) if info.get('modified') else False,
                     'etag': info.get('etag'),
-                    'content_type': info.get('contenttype'),
                     'file_id': info.get('fileid'),
-                    'client_id': rec.id
-                })
+                    'client_id': rec.id,
+                    'parent_id': parent_id, # ПРИВЯЗКА К ВЫБРАННОЙ ПАПКЕ
+                }
+
+                existing = existing_files.filtered(lambda f: f.path == full_path)
+                if existing:
+                    existing.write(vals)
+                else:
+                    self.env['nextcloud.file'].create(vals)
+
+            # Удаляем то, чего больше нет в этой папке
+            existing_files.filtered(lambda f: f.path not in current_paths).unlink()
         return True

@@ -8,14 +8,11 @@
             <form string="Nextcloud Client" 
             create="0" delete="0" sidebar="False" options="{'mode': 'edit'}">
                 <header>
-                    <!-- Показать кнопку Test Connection только если не confirmed -->
-                    <button name="action_test_connection" string="Test Connection" type="object" class="oe_highlight"
+                    <!-- Показать кнопку Connection только если не confirmed -->
+                    <button name="action_test_connection" string="Connection" type="object" class="oe_highlight"
                         invisible="state == 'confirmed'"/>
                     <!-- Показать кнопку Edit Connection только если confirmed -->
                     <button name="action_edit_connection" string="Edit Connection" type="object" class="oe_link"
-                        invisible="state != 'confirmed'"/>
-                    <!-- Показать кнопку Sync только если confirmed -->
-                    <button name="action_sync_files" string="Synchronize" type="object" class="oe_highlight"
                         invisible="state != 'confirmed'"/>
                 </header>
                 <sheet>
@@ -33,6 +30,7 @@
                         <field name="url" readonly="state == 'confirmed'"/>
                         <field name="username" readonly="state == 'confirmed'"/>
                         <field name="password" password="True" readonly="state == 'confirmed'"/>
+                        <field name="root_folder_id" options="{'no_create': True, 'no_open': True}"/>
                     </group>
                 </sheet>
             </form>

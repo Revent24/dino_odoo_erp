@@ -7,9 +7,9 @@
 		<field name="arch" type="xml">
 			<list string="Nextcloud Files" 
 			      create="0" 
-			      open_form_view="0" 
-			      type="object" 
-			      action="action_open_folder"
+		      edit="0"
+		      action="action_open_folder" 
+		      type="object"
 			      default_order="file_type, name">
 			    			    <header>
 			        <button name="action_create_folder_wizard" 
@@ -69,41 +69,36 @@
 		<field name="model_id" ref="model_nextcloud_file"/>
 		<field name="state">code</field>
 		<field name="code">
-clients = env['nextcloud.client'].search([])
-synced = 0
-for client in clients:
-    try:
-        client.action_sync_files()
-        synced += 1
-    except Exception as e:
-        pass  # ignore errors
+clients = env['nextcloud.client'].search([], limit=1)
+if not clients:
+    action = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {'title': 'Ошибка', 'message': 'Нет настроек подключения', 'type': 'danger'}
+    }
+else:
+    client = clients[0]
+    # Синхронизируем корень или выбранную папку перед открытием
+    client.action_sync_files()
 
-if synced > 0:
-    # Важно: берем первый попавшийся клиент для контекста, 
-    # чтобы визарды создания папок знали, к какому серверу обращаться
-    first_client = clients[0]
+    # Определяем корень
+    root_id = client.root_folder_id.id if client.root_folder_id else False
+
     action = {
         'type': 'ir.actions.act_window',
+        'name': 'Nextcloud Files',
         'res_model': 'nextcloud.file',
         'view_mode': 'list,form',
-        'domain': [('parent_id', '=', False)],
+        # ФИЛЬТР: показываем только файлы в корне (или выбранной папке)
+        'domain': [('parent_id', '=', root_id)],
         'context': {
-            'default_client_id': first_client.id,
+            'default_client_id': client.id,
+            'default_parent_id': root_id,
         },
         'target': 'current',
     }
-    model.env.cr.commit() # Чтобы синхронизация сохранилась перед открытием
-    result = action
-else:
-    result = {
-        'type': 'ir.actions.client',
-        'tag': 'display_notification',
-        'params': {
-            'title': 'No clients to sync',
-            'message': 'No confirmed Nextcloud clients found.',
-            'type': 'warning',
-        }
-    }
+# Финальное выражение, которое Odoo подхватит как результат
+action
 		</field>
 	</record>
 

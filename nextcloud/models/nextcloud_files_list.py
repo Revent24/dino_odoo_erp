@@ -1,6 +1,8 @@
 from odoo import models, fields, api
+from odoo.exceptions import UserError
 from email.utils import parsedate_to_datetime
 from urllib.parse import unquote
+import logging
 
 class NextcloudFile(models.Model):
     _name = 'nextcloud.file'
@@ -174,33 +176,33 @@ class NextcloudFile(models.Model):
     def _sync_folder_contents(self):
         """ Метод для получения списка файлов конкретной папки """
         self.ensure_one()
-        client = self.client_id._get_client() # Твой метод получения коннекта
+        client = self.client_id._get_client()
         
-        # Очищаем путь: декодируем %20 в пробелы, если они там есть
-        target_path = unquote(self.path)
+        # 1. Берем путь из базы
+        full_path = unquote(self.path)
         
-        # Убираем префикс, чтобы получить относительный путь
-        username = self.client_id.username
-        if target_path.startswith('/remote.php/dav/files/{}/'.format(username)):
-            target_path = target_path.replace('/remote.php/dav/files/{}/'.format(username), '')
+        # 2. Убираем системный префикс WebDAV, чтобы остался только чистый путь в облаке
+        # Префикс, который библиотека сама добавит при запросе
+        prefix = f'/remote.php/dav/files/{self.client_id.username}/'
         
-        # Для папок добавляем слеш в конце, если его нет
-        if not target_path.endswith('/') and self.file_type == 'dir':
-            target_path += '/'
+        if full_path.startswith(prefix):
+            target_path = full_path[len(prefix):].strip('/')
+        elif full_path.startswith(f'remote.php/dav/files/{self.client_id.username}/'):
+            target_path = full_path.replace(f'remote.php/dav/files/{self.client_id.username}/', '', 1).strip('/')
+        else:
+            target_path = full_path.strip('/')
         
-        print(f"DEBUG: Try to list path: {target_path}")
-        
-        # Пытаемся получить список
+        if not target_path:
+            target_path = '/'
+
+        _logger = logging.getLogger(__name__)
+        _logger.info(f"DEBUG: WebDAV list relative path: {target_path}")
+
         try:
             items = client.list(target_path, get_info=True)
         except Exception as e:
-            # Если папка не найдена, возможно стоит попробовать убрать/добавить слеш в конце
-            if target_path.endswith('/'):
-                target_path = target_path.rstrip('/')
-            else:
-                target_path += '/'
-            print(f"DEBUG: Retry with path: {target_path}")
-            items = client.list(target_path, get_info=True)
+            _logger.error(f"WebDAV Error for {target_path}: {e}")
+            raise UserError(f"Папка не найдена в Nextcloud: {target_path}")
         
         total_folder_size = 0.0
         
@@ -218,7 +220,7 @@ class NextcloudFile(models.Model):
             total_folder_size += size_mb
                 
             # Полный путь для записи
-            full_path = '/remote.php/dav/files/{}/{}'.format(username, item_path.lstrip('/'))
+            full_path = '/remote.php/dav/files/{}/{}'.format(self.client_id.username, item_path.lstrip('/'))
             
             vals = {
                 'name': item_path.split('/')[-2] if item.get('isdir') else item_path.split('/')[-1],
