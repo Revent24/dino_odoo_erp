@@ -5,16 +5,30 @@
 		<field name="name">nextcloud.file.list</field>
 		<field name="model">nextcloud.file</field>
 		<field name="arch" type="xml">
-			<list string="Nextcloud Files">
-				<field name="icon_html" widget="html" options="{'sanitize': False}"/>
-				<field name="name"/>
-				<field name="size"/>
-				<field name="last_modified"/>
-				<field name="file_type"/>
-				<field name="extension"/>
-				<field name="content_type"/>
-				<field name="etag"/>
-				<field name="client_id" invisible="1"/>
+			<list string="Nextcloud Files" 
+			      create="0" 
+			      open_form_view="0" 
+			      type="object" 
+			      action="action_open_folder"
+			      default_order="file_type, name">
+			    			    <header>
+			        <button name="action_create_folder_wizard" 
+			                string="Новая папка" 
+			                type="object" 
+			                class="btn-secondary" 
+			                icon="fa-folder-plus"/>
+			        
+			        <button name="action_upload_file_wizard" 
+			                string="Загрузить файл" 
+			                type="object" 
+			                class="btn-primary" 
+			                icon="fa-upload"/>
+			    </header>
+			    <field name="icon_html" widget="html" string=" " readonly="1"/>
+			    <field name="name" string="Name" class="fw-bold"/>
+			    <field name="size" string="Size (MB)"/>
+			    <field name="last_modified" widget="datetime"/>
+			    <field name="file_type" invisible="1"/>
 			</list>
 		</field>
 	</record>
@@ -50,13 +64,47 @@
 		</field>
 	</record>
 
-	<!-- Action -->
-	<record id="action_nextcloud_file" model="ir.actions.act_window">
+	<record id="action_nextcloud_file" model="ir.actions.server">
 		<field name="name">Nextcloud Files</field>
-		<field name="res_model">nextcloud.file</field>
-		<field name="view_mode">list,form</field>
-		<field name="view_id" ref="view_nextcloud_file_list"/>
-		<field name="views" eval="[(ref('view_nextcloud_file_list'), 'list'), (ref('view_nextcloud_file_form'), 'form')]"/>
+		<field name="model_id" ref="model_nextcloud_file"/>
+		<field name="state">code</field>
+		<field name="code">
+clients = env['nextcloud.client'].search([])
+synced = 0
+for client in clients:
+    try:
+        client.action_sync_files()
+        synced += 1
+    except Exception as e:
+        pass  # ignore errors
+
+if synced > 0:
+    # Важно: берем первый попавшийся клиент для контекста, 
+    # чтобы визарды создания папок знали, к какому серверу обращаться
+    first_client = clients[0]
+    action = {
+        'type': 'ir.actions.act_window',
+        'res_model': 'nextcloud.file',
+        'view_mode': 'list,form',
+        'domain': [('parent_id', '=', False)],
+        'context': {
+            'default_client_id': first_client.id,
+        },
+        'target': 'current',
+    }
+    model.env.cr.commit() # Чтобы синхронизация сохранилась перед открытием
+    result = action
+else:
+    result = {
+        'type': 'ir.actions.client',
+        'tag': 'display_notification',
+        'params': {
+            'title': 'No clients to sync',
+            'message': 'No confirmed Nextcloud clients found.',
+            'type': 'warning',
+        }
+    }
+		</field>
 	</record>
 
 	<!-- Menu: помещаем под ваш раздел Documents (перенесено в core/main_menu.xml) -->

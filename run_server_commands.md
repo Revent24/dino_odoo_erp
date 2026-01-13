@@ -5,6 +5,10 @@
 ```bash
 # 1. Запустить Ubuntu/WSL (это вы делаете вручную)
 
+cd ~/OdooApps/odoo19
+source .venv/bin/activate
+python3 odoo-bin -d dino24_dev -u dino_erp --addons-path=addons,../odoo_projects/dino24_addons --db_user=steve --http-port=8070
+
 # 2. Активировать виртуальное окружение
 source ~/OdooApps/odoo19-venv/bin/activate
 
