@@ -4,6 +4,10 @@
     <!-- Default singleton Nextcloud client used by actions and UI -->
     <record id="nextcloud_client_default" model="nextcloud.client">
       <field name="name">Default Nextcloud Connection</field>
+      <field name="url">http://localhost:8080</field>
+      <field name="username">admin</field>
+      <field name="password">admin</field>
+      <field name="state">draft</field>
     </record>
   </data>
 </odoo>

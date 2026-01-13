@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+	<!-- List view (заменено tree -> list) -->
+	<record id="view_nextcloud_file_list" model="ir.ui.view">
+		<field name="name">nextcloud.file.list</field>
+		<field name="model">nextcloud.file</field>
+		<field name="arch" type="xml">
+			<list string="Nextcloud Files">
+				<field name="icon_html" widget="html" options="{'sanitize': False}"/>
+				<field name="name"/>
+				<field name="size"/>
+				<field name="last_modified"/>
+				<field name="file_type"/>
+				<field name="extension"/>
+				<field name="content_type"/>
+				<field name="etag"/>
+				<field name="client_id" invisible="1"/>
+			</list>
+		</field>
+	</record>
+
+	<!-- Form view -->
+	<record id="view_nextcloud_file_form" model="ir.ui.view">
+		<field name="name">nextcloud.file.form</field>
+		<field name="model">nextcloud.file</field>
+		<field name="arch" type="xml">
+			<form string="Nextcloud File">
+				<header>
+					<button name="action_download" type="object" string="Скачать" class="btn-primary"/>
+					<button name="action_preview" type="object" string="Просмотр"/>
+				</header>
+				<sheet>
+					<group>
+						<field name="icon_html" widget="html" options="{'sanitize': False}"/>
+						<field name="name"/>
+						<field name="size"/>
+						<field name="last_modified"/>
+						<field name="file_type"/>
+						<field name="extension"/>
+						<field name="content_type"/>
+						<field name="etag"/>
+						<field name="file_id"/>
+						<field name="owner"/>
+						<field name="permissions"/>
+						<field name="path"/>
+						<field name="client_id"/>
+					</group>
+				</sheet>
+			</form>
+		</field>
+	</record>
+
+	<!-- Action -->
+	<record id="action_nextcloud_file" model="ir.actions.act_window">
+		<field name="name">Nextcloud Files</field>
+		<field name="res_model">nextcloud.file</field>
+		<field name="view_mode">list,form</field>
+		<field name="view_id" ref="view_nextcloud_file_list"/>
+		<field name="views" eval="[(ref('view_nextcloud_file_list'), 'list'), (ref('view_nextcloud_file_form'), 'form')]"/>
+	</record>
+
+	<!-- Menu: помещаем под ваш раздел Documents (перенесено в core/main_menu.xml) -->
+	<!-- menuitem id="menu_nextcloud_files" name="Files" parent="menu_dino_documents_root" action="action_nextcloud_file" sequence="3" groups="base.group_user"/> -->
+</odoo>

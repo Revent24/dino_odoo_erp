@@ -12,6 +12,7 @@
         'security/ir.model.access.csv',
         'data/nextcloud_client_data.xml',
         'views/nextcloud_views.xml',
+        'views/nextcloud_file_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,

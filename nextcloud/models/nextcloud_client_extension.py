@@ -26,6 +26,7 @@ class NextcloudClient(models.Model):
                     'res_id': self.id,
                     'view_mode': 'form',
                     'target': 'current',
+                    'view_id': self.env.ref('dino_erp.view_nextcloud_client_form').id,
                 }
             ]
         except Exception as e:
@@ -38,6 +39,7 @@ class NextcloudClient(models.Model):
                     'res_id': self.id,
                     'view_mode': 'form',
                     'target': 'current',
+                    'view_id': self.env.ref('dino_erp.view_nextcloud_client_form').id,
                 },
                 {
                     'type': 'ir.actions.client',

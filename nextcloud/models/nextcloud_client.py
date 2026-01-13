@@ -1,6 +1,13 @@
-from webdav3.client import Client
 from odoo import models, fields, api
 from odoo.exceptions import UserError
+import logging
+from email.utils import parsedate_to_datetime
+
+try:
+    from webdav3.client import Client
+except Exception as e:
+    Client = None
+    logging.getLogger(__name__).warning("webdav3 not available: %s", e)
 
 class NextcloudClient(models.Model):
     _name = 'nextcloud.client'
@@ -116,7 +123,6 @@ class NextcloudClient(models.Model):
         - If it maps to a non-existing record -> create a new record and update the external id.
         - If external id not present -> use the first existing record if any, or create one and register it.
         """
-        import logging
         _logger = logging.getLogger(__name__)
         Imd = self.env['ir.model.data']
 
@@ -170,4 +176,33 @@ class NextcloudClient(models.Model):
             'res_id': rec.id,
             'view_mode': 'form',
             'target': 'current',
+            'view_id': self.env.ref('dino_erp.view_nextcloud_client_form').id,
         }
+
+    def action_sync_files(self):
+        for rec in self:
+            if not Client:
+                raise UserError("Python package 'webdav3' is not installed on the server.")
+            client = rec._get_client()
+            try:
+                files_info = client.list(get_info=True)
+            except Exception as e:
+                raise UserError("Ошибка синхронизации файлов: %s" % e)
+            # Удаляем старые записи для этого клиента
+            self.env['nextcloud.file'].search([('client_id', '=', rec.id)]).unlink()
+            for info in files_info:
+                if info.get('path') == '/':  # пропускаем корень
+                    continue
+                name = info['path'].split('/')[-2] if info.get('isdir') else info['path'].split('/')[-1]
+                self.env['nextcloud.file'].create({
+                    'name': name,
+                    'path': info.get('path'),
+                    'file_type': 'dir' if info.get('isdir') else 'file',
+                    'size': float(info.get('size') or 0) / 1024 / 1024,
+                    'last_modified': parsedate_to_datetime(info.get('modified')).replace(tzinfo=None) if info.get('modified') else False,
+                    'etag': info.get('etag'),
+                    'content_type': info.get('contenttype'),
+                    'file_id': info.get('fileid'),
+                    'client_id': rec.id
+                })
+        return True

@@ -14,9 +14,11 @@
                     <!-- Показать кнопку Edit Connection только если confirmed -->
                     <button name="action_edit_connection" string="Edit Connection" type="object" class="oe_link"
                         invisible="state != 'confirmed'"/>
+                    <!-- Показать кнопку Sync только если confirmed -->
+                    <button name="action_sync_files" string="Synchronize" type="object" class="oe_highlight"
+                        invisible="state != 'confirmed'"/>
                 </header>
                 <sheet>
-                        <!-- Используем t-if вместо invisible/attrs -->
                         <widget name="web_ribbon" title="Connected" bg_color="bg-success" invisible="state != 'confirmed'"/>
                         <widget name="web_ribbon" title="Error" bg_color="bg-warning" invisible="state != 'error'"/>
                         <widget name="web_ribbon" title="Draft" bg_color="bg-secondary" invisible="state != 'draft'"/>

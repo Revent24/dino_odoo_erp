@@ -69,6 +69,10 @@
                 action="action_dino_parser_agent" sequence="2"/>
             <menuitem id="menu_dino_nextcloud_clients" name="Nextcloud Clients" parent="menu_dino_documents_config"
                 action="action_nextcloud_client" sequence="3"/>
+		
+        <!-- Добавляем пункт Files (Nextcloud) под Documents -->
+        <menuitem id="menu_dino_nextcloud_files" name="Files" parent="menu_dino_documents_root"
+            action="action_nextcloud_file" sequence="3" groups="base.group_user"/>
 
 
     <!-- Меню Контрагенты -->
