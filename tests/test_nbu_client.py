@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_nbu_client.py -*-
+#
 import json
 import responses
 from api_integration.services.nbu_client import NBUClient
@@ -67,4 +70,4 @@ def test_get_bank_info_success():
     with responses.RequestsMock() as rsps:
         rsps.add(rsps.GET, url, json=body, status=200)
         info = client.get_bank_info(mfo)
-        assert info == body
+        assert info == body# End of file tests/test_nbu_client.py

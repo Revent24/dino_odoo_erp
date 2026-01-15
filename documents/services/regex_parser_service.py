@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/services/regex_parser_service.py -*-
+#
 # -*- coding: utf-8 -*-
 """
 Regex Parser Service - Парсинг документів через регулярні вирази.
@@ -352,3 +355,4 @@ class RegexParserService:
         }
         
         return uom_mapping.get(uom_text, (uom_text, 1))
+# End of file documents/services/regex_parser_service.py

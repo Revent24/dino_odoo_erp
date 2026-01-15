@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/scripts/debug_ai_parser.py -*-
+#
 import sys
 import json
 
@@ -26,3 +29,4 @@ try:
     print(json.dumps(res2, indent=2, ensure_ascii=False))
 except Exception as e:
     print('OpenRouterParser error:', e)
+# End of file documents/scripts/debug_ai_parser.py

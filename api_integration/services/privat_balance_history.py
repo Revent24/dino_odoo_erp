@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/privat_balance_history.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime
@@ -182,3 +185,4 @@ def import_balance_history(endpoint, startDate=None, endDate=None):
             'errors': 0
         }
     }
+# End of file api_integration/services/privat_balance_history.py

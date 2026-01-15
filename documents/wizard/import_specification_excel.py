@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/wizard/import_specification_excel.py -*-
+#
 import base64
 import io
 from odoo import models, fields, api, _
@@ -280,3 +283,4 @@ class ImportSpecificationExcel(models.TransientModel):
             }
         else:
             raise UserError(_("No valid data found in Excel file."))
+# End of file documents/wizard/import_specification_excel.py

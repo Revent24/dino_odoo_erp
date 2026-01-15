@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/scripts/reset_vendor_views.py -*-
+#
 #!/usr/bin/env python3
 """
 Backup and delete ir.ui.view records for model 'dino.vendor'.
@@ -33,3 +36,4 @@ with registry(DB).cursor() as cr:
     else:
         print('No views to delete')
     cr.commit()
+# End of file partners/scripts/reset_vendor_views.py

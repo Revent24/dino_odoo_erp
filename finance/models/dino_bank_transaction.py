@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_bank_transaction.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 import json
@@ -146,4 +149,4 @@ class DinoBankTransaction(models.Model):
             payload['raw_data'] = json.dumps(payload['raw_data'], ensure_ascii=False)
 
         payload['bank_account_id'] = bank_account.id
-        return self.create(payload)
+        return self.create(payload)# End of file finance/models/dino_bank_transaction.py

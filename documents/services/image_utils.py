@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/services/image_utils.py -*-
+#
 import base64
 import binascii
 import io
@@ -314,3 +317,4 @@ def safe_truncate(s: str, max_len: int = 10000) -> str:
     if len(s) <= max_len:
         return s
     return s[:max_len] + "\n\n... (обрізано)"
+# End of file documents/services/image_utils.py

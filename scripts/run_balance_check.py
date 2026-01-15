@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/run_balance_check.py -*-
+#
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
@@ -51,3 +54,4 @@ def run_balance_check():
         print(f"Произошла непредвиденная ошибка: {e}")
 
 run_balance_check()
+# End of file scripts/run_balance_check.py

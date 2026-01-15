@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_find_or_create_mixin.py -*-
+#
 # -*- coding: utf-8 -*-
 import unittest
 from odoo.tests.common import TransactionCase
@@ -72,4 +75,4 @@ class TestFindOrCreateMixin(TransactionCase):
 
         self.assertEqual(record.id, existing.id)
         self.assertEqual(record.name, 'Old Name')  # Not in update_vals
-        self.assertEqual(record.description, 'Updated description')  # Updated
+        self.assertEqual(record.description, 'Updated description')  # Updated# End of file tests/test_find_or_create_mixin.py

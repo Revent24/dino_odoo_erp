@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/services/ai_parser_service.py -*-
+#
 # -*- coding: utf-8 -*-
 """
 AI Parser Service - Парсинг документів через AI моделі.
@@ -826,3 +829,4 @@ class GoogleGeminiParser:
             result['errors'].append(f"Помилка: {str(e)}")
         
         return result
+# End of file documents/services/ai_parser_service.py

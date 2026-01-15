@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_bank_balance_history.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 
@@ -80,3 +83,4 @@ class DinoBankBalanceHistory(models.Model):
     def _compute_balance_change(self):
         for record in self:
             record.balance_change = record.balance_end - record.balance_start
+# End of file finance/models/dino_bank_balance_history.py

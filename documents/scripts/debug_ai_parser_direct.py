@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/scripts/debug_ai_parser_direct.py -*-
+#
 import sys
 # Ensure package root is on sys.path so absolute imports inside module work
 sys.path.insert(0, '/home/steve/OdooApps/odoo_projects/dino24_addons/dino_erp')
@@ -39,3 +42,4 @@ if OpenRouterParser:
         print('OpenRouterParser error:', e)
 else:
     print('OpenRouterParser not found in module')
+# End of file documents/scripts/debug_ai_parser_direct.py

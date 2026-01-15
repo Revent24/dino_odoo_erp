@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/scripts/check_odoo.py -*-
+#
 from odoo import api, registry, SUPERUSER_ID
 
 db='dino24_dev'
@@ -20,3 +23,4 @@ with registry(db).cursor() as cr:
             print(r[0])
     else:
         print('No columns returned')
+# End of file partners/scripts/check_odoo.py

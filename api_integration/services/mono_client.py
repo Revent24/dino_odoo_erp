@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/mono_client.py -*-
+#
 # -*- coding: utf-8 -*-
 """Skeleton Mono client.
 """
@@ -43,3 +46,4 @@ class MonoClient:
 
     def fetch_transactions(self, *args, **kwargs):
         raise NotImplementedError('fetch_transactions not implemented yet')
+# End of file api_integration/services/mono_client.py

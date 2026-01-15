@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/handlers.py -*-
+#
 # -*- coding: utf-8 -*-
 """
 API Handlers for different operations
@@ -205,4 +208,4 @@ class PartnersUpdateHandler(BaseApiHandler):
         partner_ids = params.get('partner_ids')  # Optional: specific partners
         
         result = update_partners_from_registry(self.env, partner_ids)
-        return self._standardize_result(result)
+        return self._standardize_result(result)# End of file api_integration/services/handlers.py

@@ -1,3 +1,10 @@
+#
+#  -*- File: api_integration/models/dino_api_endpoint.py -*-
+#
+#
+#  -*- File: api_integration/models/dino_api_endpoint.py -*-
+#
+
 # -*- coding: utf-8 -*-
 import json
 import logging
@@ -380,3 +387,6 @@ class DinoApiEndpoint(models.Model):
             except Exception as e:
                 _logger.error(f"Scheduled endpoint {endpoint.name} failed: {e}")
 
+# End of file api_integration/models/dino_api_endpoint.py
+
+# End of file api_integration/models/dino_api_endpoint.py

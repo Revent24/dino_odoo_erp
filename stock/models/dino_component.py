@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_component.py -*-
+#
 # --- МОДЕЛЬ: КОМПОНЕНТ (СЕМЕЙСТВО / РОДИТЕЛЬ)
 # --- ФАЙЛ: models/dino_component.py
 #
@@ -60,4 +63,4 @@ class DinoComponent(models.Model):
         for rec in self:
             rec.is_favorite = not rec.is_favorite
 
-# --- END ---
+# --- END ---# End of file stock/models/dino_component.py

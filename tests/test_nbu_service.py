@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_nbu_service.py -*-
+#
 import json
 from types import SimpleNamespace
 import pytest
@@ -199,4 +202,4 @@ def test_sync_to_system_rates():
     result = nbu_service.sync_to_system_rates(bank.env)
     assert result['created'] == 1
     assert result['updated'] == 0
-    assert result['skipped'] == 0
+    assert result['skipped'] == 0# End of file tests/test_nbu_service.py

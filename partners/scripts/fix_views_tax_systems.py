@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/scripts/fix_views_tax_systems.py -*-
+#
 #!/usr/bin/env python3
 """Fix DB-stored views that still reference legacy 'tax_system_ids'.
 
@@ -54,3 +57,4 @@ def fix_views(cr, registry):
         print('Updated view %s (id=%s): changed=%s' % (v.name, v.id, changed))
 
     print('Done. Please restart Odoo and try updating module if needed.')
+# End of file partners/scripts/fix_views_tax_systems.py

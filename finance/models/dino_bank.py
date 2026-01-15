@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_bank.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime, timedelta
@@ -117,4 +120,4 @@ class DinoBank(models.Model):
     # РАЗДЕЛ: UI-обработчики (кнопки)
     # ------------------------------------------------------------------
     # All sync operations now handled through API endpoints
-    # Old button_sync and button_import_and_sync methods removed
+    # Old button_sync and button_import_and_sync methods removed# End of file finance/models/dino_bank.py

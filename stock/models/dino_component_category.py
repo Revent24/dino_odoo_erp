@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_component_category.py -*-
+#
 # --- МОДЕЛЬ: РАСШИРЕНИЕ КАТЕГОРИЙ (Настройка видимости BOM)
 # --- ФАЙЛ: models/dino_component_category.py
 
@@ -72,4 +75,4 @@ class DinoComponentCategory(models.Model):
             'view_mode': 'list,form',
             'domain': [('category_id', 'child_of', self.id)],
             'context': {'search_default_category_id': self.id},
-        }
+        }# End of file stock/models/dino_component_category.py

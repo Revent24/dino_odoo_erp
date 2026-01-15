@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_bom.py -*-
+#
 # --- МОДЕЛЬ: СТРОКИ СПЕЦИФИКАЦИИ (BOM)
 # --- ФАЙЛ: models/dino_bom.py
 
@@ -149,4 +152,4 @@ class DinoBomLine(models.Model):
         
         return self.env['dino.nomenclature'].browse(list(roots))
 
-# --- END ---
+# --- END ---# End of file stock/models/dino_bom.py

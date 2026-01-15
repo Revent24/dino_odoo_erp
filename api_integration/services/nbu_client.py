@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/nbu_client.py -*-
+#
 # -*- coding: utf-8 -*-
 import requests
 import logging
@@ -99,3 +102,4 @@ class NBUClient:
         except requests.RequestException as e:
             _logger.warning("Ошибка поиска банка по МФО %s: %s", mfo, e)
             raise
+# End of file api_integration/services/nbu_client.py

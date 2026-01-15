@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/privat_client.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 import requests
@@ -184,3 +187,4 @@ class PrivatClient:
                     time.sleep(self.request_delay)
             else:
                 break
+# End of file api_integration/services/privat_client.py

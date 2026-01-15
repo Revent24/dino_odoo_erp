@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/models/dino_tax_system.py -*-
+#
 from odoo import models, fields, _
 
 class DinoTaxSystem(models.Model):
@@ -6,3 +9,4 @@ class DinoTaxSystem(models.Model):
 
     name = fields.Char(string='Name', required=True, translate=True)
     vat_rate = fields.Float(string='VAT Rate (%)')
+# End of file partners/models/dino_tax_system.py

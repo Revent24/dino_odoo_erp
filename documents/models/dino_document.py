@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_document.py -*-
+#
 # --- МОДЕЛЬ: Project Document (dino.operation.document)
 # --- ФАЙЛ: models/dino_operation_document.py
 
@@ -414,3 +417,4 @@ class DinoOperationDocument(models.Model):
         }
     
     
+# End of file documents/models/dino_document.py

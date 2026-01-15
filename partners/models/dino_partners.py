@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/models/dino_partners.py -*-
+#
 import re
 import logging
 from datetime import datetime
@@ -424,3 +427,4 @@ class DinoPartnerContact(models.Model):
     phone = fields.Char(string='Phone')
     email = fields.Char(string='Email')
     position = fields.Char(string='Position', translate=True)
+# End of file partners/models/dino_partners.py

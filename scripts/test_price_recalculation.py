@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/test_price_recalculation.py -*-
+#
 #!/usr/bin/env python3
 """
 Тест взаимного пересчета цен price_untaxed <-> price_tax
@@ -82,3 +85,4 @@ def test_price_calculations():
 
 if __name__ == '__main__':
     test_price_calculations()
+# End of file scripts/test_price_recalculation.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_document_specification.py -*-
+#
 # --- МОДЕЛЬ: Specification Line (dino.operation.document.specification)
 # --- ФАЙЛ: models/dino_operation_document_specification.py
 
@@ -308,4 +311,4 @@ class DinoOperationDocumentSpecification(models.Model):
             'view_mode': 'form',
             'target': 'new',
         }
-# --- END ---
+# --- END ---# End of file documents/models/dino_document_specification.py

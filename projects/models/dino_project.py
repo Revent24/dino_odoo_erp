@@ -1,3 +1,6 @@
+#
+#  -*- File: projects/models/dino_project.py -*-
+#
 from odoo import api, fields, models, _
 
 
@@ -89,3 +92,4 @@ class DinoProject(models.Model):
         else:
             if not (self.project_type in ('sale', 'purchase')):
                 self.project_type = 'overhead'
+# End of file projects/models/dino_project.py

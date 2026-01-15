@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/scripts/run_image_utils_tests.py -*-
+#
 import os
 import sys
 import importlib.util
@@ -35,3 +38,4 @@ if __name__ == '__main__':
     else:
         # pytest returned exit code
         sys.exit(ok)
+# End of file documents/scripts/run_image_utils_tests.py

@@ -1,3 +1,10 @@
+#
+#  -*- File: nextcloud/__manifest__.py -*-
+#
+#
+#  -*- File: nextcloud/__manifest__.py -*-
+#
+
 {
     'name': 'Nextcloud Integration',
     'version': '1.0',
@@ -11,10 +18,12 @@
     'data': [
         'security/ir.model.access.csv',
         'data/nextcloud_client_data.xml',
-        'views/nextcloud_views.xml',
+        'views/nextcloud_client_views.xml',
         'views/nextcloud_file_views.xml',
     ],
     'post_init_hook': 'post_init_hook',
     'installable': True,
     'application': False,
 }
+
+# End of file nextcloud/__manifest__.py# End of file nextcloud/__manifest__.py

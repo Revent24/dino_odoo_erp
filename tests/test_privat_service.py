@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_privat_service.py -*-
+#
 import json
 import time
 from types import SimpleNamespace
@@ -79,3 +82,4 @@ def test_import_accounts_creates_and_skips(monkeypatch):
 
 
 
+# End of file tests/test_privat_service.py

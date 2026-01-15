@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_document_attachment.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -271,3 +274,4 @@ class DinoDocumentAttachment(models.Model):
         if any(rec.import_status == 'imported' for rec in self):
             raise UserError(_('Cannot delete imported attachments. Reset import status first.'))
         return super().unlink()
+# End of file documents/models/dino_document_attachment.py

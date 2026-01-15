@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/run_cron_fetch_rates.py -*-
+#
 #!/usr/bin/env python3
 import odoo
 from odoo.tools import config
@@ -12,3 +15,4 @@ with odoo.registry(DB).cursor() as cr:
     env['dino.bank'].cron_fetch_rates()
     cr.commit()
     print('cron_fetch_rates done')
+# End of file scripts/run_cron_fetch_rates.py

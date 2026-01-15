@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/run_health_check.py -*-
+#
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
@@ -37,3 +40,4 @@ def run_health_check():
 
 # This part will be executed when the script is fed into odoo shell
 run_health_check()
+# End of file scripts/run_health_check.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/scripts/test_image_utils_direct.py -*-
+#
 import importlib.util
 import json
 
@@ -23,3 +26,4 @@ print('prepare_inline_data(png_header_b64):', json.dumps(res or {}, ensure_ascii
 # test safe_truncate
 s = 'x'*20000
 print('safe_truncate len:', len(mod.safe_truncate(s, 1000)))
+# End of file documents/scripts/test_image_utils_direct.py

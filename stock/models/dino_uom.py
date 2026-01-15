@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_uom.py -*-
+#
 from odoo import fields, models, api, _
 
 class DinoUoM(models.Model):
@@ -47,3 +50,4 @@ class DinoUoM(models.Model):
             })
         
         return uom
+# End of file stock/models/dino_uom.py

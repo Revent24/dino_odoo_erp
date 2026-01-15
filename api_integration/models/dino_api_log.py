@@ -1,3 +1,10 @@
+#
+#  -*- File: api_integration/models/dino_api_log.py -*-
+#
+#
+#  -*- File: api_integration/models/dino_api_log.py -*-
+#
+
 # -*- coding: utf-8 -*-
 from odoo import fields, models
 
@@ -25,3 +32,5 @@ class DinoApiLog(models.Model):
     response_data = fields.Text(string='Response Data')
     error_message = fields.Text(string='Error Message')
     execution_time = fields.Float(string='Execution Time (sec)', help='Time in seconds')
+
+# End of file api_integration/models/dino_api_log.py# End of file api_integration/models/dino_api_log.py

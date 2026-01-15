@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/models/dino_partner_nomenclature.py -*-
+#
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
 
@@ -98,3 +101,4 @@ class DinoPartnerNomenclature(models.Model):
                     (record.name, record.document_count)
                 )
         return super().unlink()
+# End of file partners/models/dino_partner_nomenclature.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/partners_service.py -*-
+#
 # -*- coding: utf-8 -*-
 import re
 import logging
@@ -183,3 +186,4 @@ def update_partners_from_registry(env, partner_ids=None):
     
     _logger.info(f"Registry update completed: {stats}")
     return {'stats': stats}
+# End of file api_integration/services/partners_service.py

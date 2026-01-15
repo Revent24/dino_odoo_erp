@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/add_partner_fields.py -*-
+#
 #!/usr/bin/env python3
 """
 Скрипт для добавления полей в таблицы dino_partner и dino_bank_transaction
@@ -65,3 +68,4 @@ def add_fields():
 
 # Выполняем
 add_fields()
+# End of file scripts/add_partner_fields.py

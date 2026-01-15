@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_api_endpoint.py -*-
+#
 # -*- coding: utf-8 -*-
 import json
 from dino_erp.api_integration.models.dino_api_endpoint import DinoApiEndpoint
@@ -28,4 +31,4 @@ def test_handler_initialization(env):
 
     handler = NbuRatesHandler(endpoint)
     assert handler.endpoint == endpoint
-    assert handler.env == env
+    assert handler.env == env# End of file tests/test_api_endpoint.py

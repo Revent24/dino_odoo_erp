@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/mono_service.py -*-
+#
 
 def import_mono_rates(bank, overwrite=True):
     """
@@ -81,4 +84,4 @@ def import_mono_rates(bank, overwrite=True):
 
     _logger.info(f"import_mono_rates: Import completed - Buy: {buy_result['stats']}, Sell: {sell_result['stats']}")
 
-    return {'stats': total_stats}
+    return {'stats': total_stats}# End of file api_integration/services/mono_service.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/models/migrations.py -*-
+#
 """Migration utilities removed.
 
 This file previously provided a wrapper to run tax-system cleanup/migration.
@@ -13,3 +16,4 @@ class DinoPartnerMigrationPlaceholder(models.TransientModel):
 
     def noop(self):
         return True
+# End of file partners/models/migrations.py

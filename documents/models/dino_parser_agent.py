@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_parser_agent.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 from odoo import models, fields, api
@@ -224,3 +227,4 @@ class DinoParserAgent(models.Model):
                 return self.fallback_agent_id.parse_text(text, partner_name, _tried_agents=_tried_agents, image_data=image_data)
         
         return result
+# End of file documents/models/dino_parser_agent.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: projects/models/dino_project_payment.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 
@@ -27,3 +30,4 @@ class DinoProjectPayment(models.Model):
     # Related fields from transaction for convenience
     transaction_amount = fields.Monetary(related='transaction_id.amount', string=_('Transaction Amount'), readonly=True)
     transaction_date = fields.Datetime(related='transaction_id.datetime', string=_('Transaction Date'), readonly=True)
+# End of file projects/models/dino_project_payment.py

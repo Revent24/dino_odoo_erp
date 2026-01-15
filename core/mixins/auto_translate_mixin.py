@@ -1,3 +1,6 @@
+#
+#  -*- File: core/mixins/auto_translate_mixin.py -*-
+#
 import logging
 from odoo import models, api
 
@@ -104,4 +107,4 @@ class AutoTranslateMixin(models.AbstractModel):
                     except Exception as e:
                         _logger.warning('AutoTranslate failed for %s.%s -> %s: %s', record._name, field, lang, e)
 
-        return res
+        return res# End of file core/mixins/auto_translate_mixin.py

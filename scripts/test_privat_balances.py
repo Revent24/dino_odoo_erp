@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/test_privat_balances.py -*-
+#
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -157,3 +160,4 @@ Examples:
 
 if __name__ == '__main__':
     main()
+# End of file scripts/test_privat_balances.py

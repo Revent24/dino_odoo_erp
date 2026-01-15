@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_bank_account.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 
@@ -37,3 +40,4 @@ class DinoBankAccount(models.Model):
             name = f"{account.name} ({account.account_number})"
             result.append((account.id, name))
         return result
+# End of file finance/models/dino_bank_account.py

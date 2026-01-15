@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/privat_service.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime
@@ -389,4 +392,4 @@ def import_privat_rates(bank, overwrite=True):
 
     _logger.info(f"import_privat_rates: Import completed - Buy: {buy_result['stats']}, Sell: {sell_result['stats']}")
 
-    return {'stats': total_stats}
+    return {'stats': total_stats}# End of file api_integration/services/privat_service.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: tests/test_privat_client.py -*-
+#
 import json
 import responses
 from api_integration.services.privat_client import PrivatClient
@@ -46,3 +49,4 @@ def test_fetch_transactions_iter_pagination():
         assert len(pages) == 2
         assert pages[0]['transactions'][0]['id'] == 1
         assert pages[1]['transactions'][0]['id'] == 2
+# End of file tests/test_privat_client.py

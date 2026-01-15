@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/scripts/update_partners.py -*-
+#
 #!/usr/bin/env python3
 """
 Simple XML-RPC script to batch-update `dino.vendor` records by `egrpou`.
@@ -74,3 +77,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+# End of file partners/scripts/update_partners.py

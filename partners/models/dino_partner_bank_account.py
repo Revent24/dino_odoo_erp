@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/models/dino_partner_bank_account.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
@@ -122,3 +125,4 @@ class DinoPartnerBankAccount(models.Model):
             vals['bank_mfo'] = bank_mfo
         
         return self.create(vals)
+# End of file partners/models/dino_partner_bank_account.py

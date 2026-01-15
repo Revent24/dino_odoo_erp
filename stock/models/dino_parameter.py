@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_parameter.py -*-
+#
 # --- МОДЕЛЬ: ПАРАМЕТРЫ НОМЕНКЛАТУРЫ
 # --- ФАЙЛ: models/dino_parameter.py
 #
@@ -20,4 +23,4 @@ class DinoParameter(models.Model):
     value = fields.Float(string=_('Value'), default=0.0, required=True)           # Напр. 810
     uom_id = fields.Many2one('dino.uom', string=_('Unit'))                         # Напр. мм
 
-# --- END ---
+# --- END ---# End of file stock/models/dino_parameter.py

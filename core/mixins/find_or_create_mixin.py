@@ -1,3 +1,6 @@
+#
+#  -*- File: core/mixins/find_or_create_mixin.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import models, api
 
@@ -23,4 +26,4 @@ class FindOrCreateMixin(models.AbstractModel):
             if update_vals:
                 record.write(update_vals)
             return record
-        return self.create(create_vals)
+        return self.create(create_vals)# End of file core/mixins/find_or_create_mixin.py

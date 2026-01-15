@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/run_import_nbu.py -*-
+#
 #!/usr/bin/env python3
 import sys
 import odoo
@@ -22,4 +25,4 @@ with odoo.registry(DB).cursor() as cr:
     # optionally, print some sample skipped details if available
     # this method currently returns counts only
 
-print('Done')
+print('Done')# End of file scripts/run_import_nbu.py

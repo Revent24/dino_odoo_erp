@@ -1,3 +1,6 @@
+#
+#  -*- File: stock/models/dino_nomenclature.py -*-
+#
 # --- МОДЕЛЬ: НОМЕНКЛАТУРА (ИСПОЛНЕНИЕ / КОНКРЕТНЫЙ ТОВАР)
 # --- ФАЙЛ: models/dino_nomenclature.py
 
@@ -256,4 +259,4 @@ class DinoNomenclature(models.Model):
         ('code_unique', 'unique (code)', 'The Reference must be unique!'),
     ]
 
-# --- END ---
+# --- END ---# End of file stock/models/dino_nomenclature.py

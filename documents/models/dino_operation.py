@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_operation.py -*-
+#
 from odoo import fields, models
 
 
@@ -11,3 +14,4 @@ class DinoOperation(models.Model):
     currency_id = fields.Many2one('res.currency', string='Currency')
     vat_rate = fields.Float(string='VAT Rate (%)', default=20.0)
     note = fields.Text(string='Notes')
+# End of file documents/models/dino_operation.py

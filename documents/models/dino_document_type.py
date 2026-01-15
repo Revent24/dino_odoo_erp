@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/models/dino_document_type.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import models, fields, api
 
@@ -42,3 +45,4 @@ class DinoDocumentType(models.Model):
             'domain': [('document_type_id', '=', self.id)],
             'context': {'default_document_type_id': self.id}
         }
+# End of file documents/models/dino_document_type.py

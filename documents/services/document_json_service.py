@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/services/document_json_service.py -*-
+#
 # -*- coding: utf-8 -*-
 """
 Document JSON Service - Обробка JSON даних від парсерів та запис в БД.
@@ -416,3 +419,4 @@ class DocumentJSONService:
     # VAT rate теперь берется из системы налогообложения контрагента
     # через partner_id -> tax_system_id -> vat_rate
     # См. метод _ensure_partner_tax_system() в dino_document.py
+# End of file documents/services/document_json_service.py

@@ -1,3 +1,6 @@
+#
+#  -*- File: scripts/test_mixin.py -*-
+#
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -34,4 +37,4 @@ except ImportError as e:
     sys.exit(1)
 except Exception as e:
     print(f"❌ Error: {e}")
-    sys.exit(1)
+    sys.exit(1)# End of file scripts/test_mixin.py

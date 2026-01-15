@@ -1,3 +1,10 @@
+#
+#  -*- File: nextcloud/hooks.py -*-
+#
+#
+#  -*- File: nextcloud/hooks.py -*-
+#
+
 from odoo import api, SUPERUSER_ID
 
 
@@ -37,3 +44,6 @@ def post_init_hook(cr, registry):
     else:
         # Single existing record — ensure mapping is present
         _ensure_ir_model_data(env, records[0].id)
+
+# End of file nextcloud/hooks.py
+# End of file nextcloud/hooks.py

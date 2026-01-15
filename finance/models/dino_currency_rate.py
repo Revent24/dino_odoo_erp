@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_currency_rate.py -*-
+#
 from odoo import api, fields, models, _
 
 
@@ -24,4 +27,4 @@ class DinoCurrencyRate(models.Model):
                 ('id', '!=', record.id)
             ])
             if existing:
-                raise models.ValidationError('Rate for this currency/date/source/type already exists')
+                raise models.ValidationError('Rate for this currency/date/source/type already exists')# End of file finance/models/dino_currency_rate.py

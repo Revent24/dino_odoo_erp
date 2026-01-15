@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/models/dino_bank_cron.py -*-
+#
 # -*- coding: utf-8 -*-
 import logging
 from datetime import datetime, timedelta
@@ -118,3 +121,4 @@ class DinoBankCron(models.Model):
                         _logger.exception('Failed to fetch rates for bank %s', b.id)
             except Exception:
                 _logger.exception('Unexpected error in cron_fetch_rates for bank %s', b.id)
+# End of file finance/models/dino_bank_cron.py

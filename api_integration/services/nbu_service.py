@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/nbu_service.py -*-
+#
 # -*- coding: utf-8 -*-
 """finance/services/nbu_service.py
 
@@ -410,3 +413,4 @@ def run_sync(env, bank=None):
         'stats': import_stats,
         'sync_stats': sync_stats
     }
+# End of file api_integration/services/nbu_service.py

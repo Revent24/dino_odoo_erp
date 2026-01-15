@@ -1,3 +1,6 @@
+#
+#  -*- File: partners/scripts/migrate_tag_roles.py -*-
+#
 #!/usr/bin/env python3
 """
 Простая утилита для проставления поля `role` у существующих записей dino.partner.tag
@@ -33,3 +36,4 @@ with api.Environment.manage():
                 updated.append((name, tags.ids))
 
         print('Updated tags:', updated)
+# End of file partners/scripts/migrate_tag_roles.py

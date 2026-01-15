@@ -1,3 +1,6 @@
+#
+#  -*- File: api_integration/services/api_client.py -*-
+#
 # -*- coding: utf-8 -*-
 import requests
 import json
@@ -120,4 +123,4 @@ class ApiClient:
     def _has_more_pages(self, data, current_page):
         """Check if API has more pages (override in subclasses)"""
         # Default implementation - assume no pagination
-        return False
+        return False# End of file api_integration/services/api_client.py

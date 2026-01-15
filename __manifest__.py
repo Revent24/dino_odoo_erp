@@ -1,3 +1,10 @@
+#
+#  -*- File: __manifest__.py -*-
+#
+#
+#  -*- File: __manifest__.py -*-
+#
+
 {
     'name': 'Dino ERP: Динамическое управление производством',
     'version': '1.0',
@@ -12,7 +19,7 @@
     'data': [
         # Nextcloud integration
         'nextcloud/data/nextcloud_client_data.xml',
-        'nextcloud/views/nextcloud_views.xml',
+        'nextcloud/views/nextcloud_client_views.xml',
         'nextcloud/views/nextcloud_file_views.xml',
         'nextcloud/security/ir.model.access.csv',
 
@@ -80,3 +87,6 @@
     
     'images': ['core/menu_icons/crm.png'],
 }
+
+# End of file __manifest__.py
+# End of file __manifest__.py

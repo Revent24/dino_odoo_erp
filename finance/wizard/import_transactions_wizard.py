@@ -1,3 +1,6 @@
+#
+#  -*- File: finance/wizard/import_transactions_wizard.py -*-
+#
 # -*- coding: utf-8 -*-
 from odoo import api, fields, models, _
 from odoo.exceptions import UserError
@@ -19,3 +22,4 @@ class ImportTransactionsWizard(models.TransientModel):
         To keep the UI stable we provide an explicit message instead of running the import.
         """
         raise UserError(_('Импорт транзакций отключён. Функциональность удалена.'))
+# End of file finance/wizard/import_transactions_wizard.py

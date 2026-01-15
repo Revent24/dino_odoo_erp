@@ -1,3 +1,6 @@
+#
+#  -*- File: documents/tests/test_image_utils.py -*-
+#
 import base64
 import os
 import importlib.util
@@ -41,3 +44,4 @@ def test_safe_truncate():
     s = 'x' * 20000
     t = mod.safe_truncate(s, 1000)
     assert len(t) <= 1005
+# End of file documents/tests/test_image_utils.py
