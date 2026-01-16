@@ -1,4 +1,6 @@
-#
-#  -*- File: core/__init__.py -*-
-#
-from . import mixins# End of file core/__init__.py
+from . import mixins
+
+# -*- End of core/__init__.py -*-
+
+
+# -*- End of dino_erp/core\__init__.py -*-

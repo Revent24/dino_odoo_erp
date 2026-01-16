@@ -1,5 +1,6 @@
-#
-#  -*- File: partners/__init__.py -*-
-#
 from . import models
-# End of file partners/__init__.py
+
+# -*- End of partners/__init__.py -*-
+
+
+# -*- End of dino_erp/partners\__init__.py -*-

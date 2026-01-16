@@ -1,5 +1,6 @@
-#
-#  -*- File: projects/__init__.py -*-
-#
 from . import models
-# End of file projects/__init__.py
+
+# -*- End of projects/__init__.py -*-
+
+
+# -*- End of dino_erp/projects\__init__.py -*-
