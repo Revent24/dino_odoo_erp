@@ -1,9 +1,3 @@
-#
-#  -*- File: nextcloud/__manifest__.py -*-
-#
-#
-#  -*- File: nextcloud/__manifest__.py -*-
-#
 
 {
     'name': 'Nextcloud Integration',

@@ -8,17 +8,20 @@
         <field name="arch" type="xml">
             <list string="Nextcloud Files" create="false" edit="false" action="action_open_folder" type="object">
                 <header>
-                    <button name="action_create_folder_wizard" string="Новая папка" type="object" class="btn-secondary" icon="fa-folder-plus"/>
-                    <button name="action_upload_file_wizard" string="Загрузить файл" type="object" class="btn-primary" icon="fa-upload"/>
+                    <button name="action_create_folder_wizard" string="Новая папка" type="object" class="btn-secondary"/>
+                    <button name="action_upload_file_wizard" string="Загрузить файл" type="object" class="btn-primary"/>
+                    <button name="action_sync_current_folder" string="Обновить" type="object" class="btn-info" icon="fa-refresh"/>
                 </header>
-                <field name="icon_html" widget="html" string=" " readonly="1"/>
+
+                <field name="icon_html" widget="html" string=" " readonly="1" width="40px" class="text-center"/>
                 <field name="name" string="Имя"/>
-                <field name="file_id" string="ID" optional="show"/>
                 <field name="size" string="Размер (MB)" widget="float" digits="[16,2]"/>
                 <field name="last_modified" string="Изменен"/>
-                <button name="action_view_form" string="Инфо" type="object" icon="fa-info-circle"/>
-                <field name="path" invisible="1"/>
-                <field name="file_type" invisible="1"/>
+
+                <field name="path_readable" string="Remote Path" optional="hide"/>
+                <field name="file_type" optional="hide"/>
+				<field name="file_id" string="ID" optional="hide"/>         
+                <button name="action_view_form" string="" type="object" icon="fa-info-circle" class="btn-link"/>
             </list>
         </field>
     </record>
@@ -28,11 +31,16 @@
         <field name="model">nextcloud.file</field>
         <field name="arch" type="xml">
             <form>
+                <header>
+                    <button name="action_create_folder_wizard" string="Новая папка" type="object" invisible="file_type != 'dir'"/>
+                    <button name="action_upload_file_wizard" string="Загрузить файл" type="object" class="btn-primary" invisible="file_type != 'dir'"/>
+                </header>
                 <sheet>
                     <group>
-                        <field name="name"/>
-                        <field name="file_id"/>
-                        <field name="path" readonly="1"/>
+                        <field name="name" string="Имя"/>
+                        <field name="file_id" string="ID (Server)" readonly="1"/>
+                        <field name="path_readable" string="Remote Path" readonly="1"/>
+                        <field name="file_type" invisible="1"/>
                     </group>
                     <notebook>
                         <page string="Debug Data">
@@ -49,8 +57,7 @@
         <field name="model_id" ref="model_nextcloud_file"/>
         <field name="state">code</field>
         <field name="code">
-client = env['nextcloud.client'].search([], limit=1)
-action = client.get_action_open_client() if client else {'type': 'ir.actions.act_window', 'res_model': 'nextcloud.client', 'view_mode': 'form', 'target': 'current'}
+            action = env['nextcloud.file'].action_main_menu_open()
         </field>
     </record>
 </odoo>
