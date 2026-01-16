@@ -26,6 +26,7 @@
                 </header>
                 <sheet>
                     <widget name="web_ribbon" title="Connected" bg_color="bg-success" invisible="state != 'confirmed'"/>
+                    <widget name="web_ribbon" title="Draft" bg_color="bg-secondary" invisible="state != 'draft'"/>
                     
                     <div class="oe_title">
                         <label for="name" class="oe_edit_only"/>

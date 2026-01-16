@@ -7,6 +7,10 @@ from odoo.exceptions import UserError
 from urllib.parse import unquote
 import logging
 
+# Проверь путь! Если api.py в папке tools, то: from ..tools.nextcloud_api import NextcloudConnector
+# Если в папке models, оставляем так:
+from .nextcloud_api import NextcloudConnector
+
 _logger = logging.getLogger(__name__)
 
 class NextcloudClient(models.Model):
@@ -17,13 +21,15 @@ class NextcloudClient(models.Model):
     url = fields.Char(string='Base URL', required=True, default='http://localhost:8080')
     username = fields.Char(string='Username', required=True, default='admin')
     password = fields.Char(string='Password', required=True, default='admin')
-    root_path = fields.Char(string='Target Folder ID or Link')
+    root_path = fields.Char(string='Target Folder ID or Link', help="ID папки из Nextcloud (Settings -> Copy Link)")
     
     state = fields.Selection([('draft', 'Draft'), ('confirmed', 'Connected')], default='draft')
     root_folder_id = fields.Many2one(comodel_name='nextcloud.file', string='Main Folder', readonly=True)
     root_folder_path = fields.Char(related='root_folder_id.path', string='Actual Path', readonly=True)
 
     def _req(self, method, path, data=None, headers=None):
+        """Базовый метод для всех запросов к Nextcloud"""
+        # Убираем возможные дубли слэшей
         clean_path = path if path.startswith('/') else f'/{path}'
         full_url = f"{self.url.rstrip('/')}{clean_path}"
         auth = (self.username, self.password)
@@ -32,7 +38,7 @@ class NextcloudClient(models.Model):
             return res
         except Exception as e:
             _logger.error("Nextcloud Request Error: %s", str(e))
-            raise UserError(f"Ошибка запроса: {str(e)}")
+            raise UserError(f"Ошибка связи с сервером: {str(e)}")
 
     def action_test_connection(self):
         self.ensure_one()
@@ -40,40 +46,15 @@ class NextcloudClient(models.Model):
             raise UserError("Укажите Target Folder ID или Link")
             
         raw_input = self.root_path.strip().rstrip('/')
-        folder_id = raw_input.split('/')[-1] if not raw_input.isdigit() else raw_input
+        folder_id = raw_input.split('/')[-1] if not raw_input.isdigit() and '/' in raw_input else raw_input
 
-        # Используем только чтение (SEARCH/PROPFIND), никаких MOVE
-        search_url = "/remote.php/dav/"
-        body = f"""<?xml version="1.0" encoding="UTF-8"?>
-        <d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
-          <d:basicsearch>
-            <d:select><d:prop><d:displayname/><oc:fileid/></d:prop></d:select>
-            <d:from><d:scope><d:href>/files/{self.username}</d:href><d:depth>infinity</d:depth></d:scope></d:from>
-            <d:where><d:eq><d:prop><oc:fileid/></d:prop><d:literal>{folder_id}</d:literal></d:eq></d:where>
-          </d:basicsearch>
-        </d:searchrequest>"""
+        # Только проверка пути, без глубокого сканирования содержимого
+        href = NextcloudConnector.get_path_by_id(self, folder_id)
+        if not href:
+            raise UserError(f"Папка с ID {folder_id} не найдена.")
 
-        res = self._req('SEARCH', search_url, data=body.encode('utf-8'), headers={'Content-Type': 'text/xml'})
-        
-        if res.status_code not in [200, 207]:
-            _logger.error("Nextcloud server returned %s", res.status_code)
-            raise UserError(f"Сервер вернул ошибку {res.status_code}. Проверьте URL и доступы.")
-
-        tree = ET.fromstring(res.content)
-        ns = {'d': 'DAV:', 'oc': 'http://owncloud.org/ns'}
-        node = tree.find('.//d:response', ns)
-        
-        if node is None:
-            raise UserError(f"Папка с ID {folder_id} не найдена в Nextcloud.")
-
-        href = unquote(node.find('.//d:href', ns).text)
-        display_name = node.find('.//d:displayname', ns)
-        name = display_name.text if display_name is not None and display_name.text else href.split('/')[-1]
-
-        file_obj = self.env['nextcloud.file']
-        root_file = file_obj.search([
-            ('client_id', '=', self.id), ('file_id', '=', folder_id)
-        ], limit=1)
+        decoded_path = unquote(href).rstrip('/')
+        name = decoded_path.split('/')[-1] or f"Root_{folder_id[:8]}"
 
         vals = {
             'name': name, 
@@ -83,7 +64,9 @@ class NextcloudClient(models.Model):
             'file_id': folder_id
         }
 
-        # Принудительно отключаем MOVE логику при записи/создании
+        file_obj = self.env['nextcloud.file']
+        root_file = file_obj.search([('client_id', '=', self.id), ('file_id', '=', folder_id)], limit=1)
+
         if root_file:
             root_file.with_context(no_nextcloud_move=True).write(vals)
         else:
@@ -94,18 +77,8 @@ class NextcloudClient(models.Model):
             'state': 'confirmed'
         })
 
-        # Запускаем синхронизацию контента также с защитой от MOVE
-        root_file.with_context(no_nextcloud_move=True)._sync_folder_contents()
-        
-        return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {
-                'title': 'Успех',
-                'message': f'Соединение установлено. Папка "{name}" синхронизирована.',
-                'sticky': False,
-            }
-        }
+        # Возвращаем простое обновление страницы без уведомлений и задержек
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def action_edit_connection(self):
         self.write({'state': 'draft'})
