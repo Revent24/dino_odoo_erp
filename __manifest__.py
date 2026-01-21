@@ -47,7 +47,10 @@
 
         'projects/views/dino_project_views_sale.xml',
         'projects/views/dino_project_views.xml',
+        'projects/views/dino_project_type_views.xml',
         'projects/security/ir.model.access.csv',
+        'projects/data/project_categories.xml',
+        'projects/data/project_types.xml',
 
         # Core security and shared data
         'core/security/ir.model.access.csv',
