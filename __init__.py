@@ -1,4 +1,4 @@
-from . import core, finance, documents, projects, stock, partners, api_integration, nextcloud
+from . import core, finance, documents, nextcloud, projects, stock, partners, api_integration
 
 # -*- End of __init__.py -*-
 
