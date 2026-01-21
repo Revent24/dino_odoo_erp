@@ -1,0 +1,1 @@
+from . import 0002_migrate_project_type_to_many2one

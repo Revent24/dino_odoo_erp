@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="project_type_sale" model="dino.project.type">
+            <field name="name">Продажи</field>
+            <field name="code">sales</field>
+            <field name="project_category_id" ref="project_category_income"/>
+        </record>
+        <record id="project_type_purchase" model="dino.project.type">
+            <field name="name">Закупки</field>
+            <field name="code">purchases</field>
+            <field name="project_category_id" ref="project_category_expense"/>
+        </record>
+        <record id="project_type_overhead" model="dino.project.type">
+            <field name="name">Расходы</field>
+            <field name="code">overhead</field>
+            <field name="project_category_id" ref="project_category_expense"/>
+        </record>
+    </data>
+</odoo>

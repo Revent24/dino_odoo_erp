@@ -2,64 +2,63 @@
 
 <!-- File nextcloud/views/nextcloud_client_views.xml -->
 <odoo>
-    <record id="view_nextcloud_client_form" model="ir.ui.view">
+    <record id="view_nextcloud_client_form_v4" model="ir.ui.view">
         <field name="name">nextcloud.client.form</field>
         <field name="model">nextcloud.client</field>
+        <field name="priority">10</field>
         <field name="arch" type="xml">
-            <form string="Nextcloud Client" create="0" delete="0">
+            <form string="Nextcloud Client">
                 <header>
-                    <button name="action_test_connection" 
-                            string="Connect &amp; Sync" 
-                            type="object" 
-                            class="oe_highlight"
-                            icon="fa-refresh"
-                            invisible="state == 'confirmed'"/>
-                    
-                    <button name="action_edit_connection" 
-                            string="Edit Settings" 
-                            type="object" 
-                            class="oe_link"
-                            icon="fa-pencil"
-                            invisible="state != 'confirmed'"/>
-                    
-                    <field name="state" widget="statusbar" statusbar_visible="draft,confirmed" invisible="1"/>
+                    <button name="action_test_connection" string="Connect &amp; Sync" type="object" class="oe_highlight" icon="fa-refresh" invisible="state == 'confirmed'"/>
+                    <button name="action_edit_connection" string="Edit Settings" type="object" class="oe_link" icon="fa-pencil" invisible="state != 'confirmed'"/>
+                    <field name="state" widget="statusbar" invisible="1"/>
                 </header>
                 <sheet>
-                    <widget name="web_ribbon" title="Connected" bg_color="bg-success" invisible="state != 'confirmed'"/>
-                    <widget name="web_ribbon" title="Draft" bg_color="bg-secondary" invisible="state != 'draft'"/>
-                    
                     <div class="oe_title">
-                        <label for="name" class="oe_edit_only"/>
-                        <h1>
-                            <field name="name" placeholder="e.g. Local Nextcloud"
-                                   required="1" readonly="state == 'confirmed'"/>
-                        </h1>
+                        <label for="name"/>
+                        <h1><field name="name" readonly="state == 'confirmed'"/></h1>
                     </div>
-                    
-                    <group>
-                        <group string="API Credentials">
-                            <field name="url" placeholder="http://localhost:8080" readonly="state == 'confirmed'"/>
-                            <field name="username" readonly="state == 'confirmed'"/>
-                            <field name="password" password="True" readonly="state == 'confirmed'"/>
-                        </group>
-                        
-                        <group string="root directory">
-                            <field name="root_path" 
-                                   string="Internal link (Folder ID)"
-                                   placeholder="e.g. 63"
-                                   readonly="state == 'confirmed'"/>
-                            
-                            <field name="root_folder_id" 
-                                   string="Mapped Folder"
-                                   readonly="1" 
-                                   invisible="not root_folder_id"
-                                   options="{'no_open': True}"/>
-
-                            <field name="root_folder_path" 
-                                   string="Actual Path"
-                                   invisible="not root_folder_id"/>
-                        </group>
-                    </group>
+                    <notebook>
+                        <page string="Settings" name="settings">
+                            <group>
+                                <group string="Credentials">
+                                    <field name="url" readonly="state == 'confirmed'"/>
+                                    <field name="username" readonly="state == 'confirmed'"/>
+                                    <field name="password" password="True" readonly="state == 'confirmed'"/>
+                                </group>
+                                <group string="Root Directory">
+                                    <field name="root_folder_id" readonly="1" force_save="1"/>
+                                    <field name="root_folder_path" readonly="1" force_save="1"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="Root Folders" name="root_mapping">
+                            <field name="root_maps">
+                                <list create="0" delete="0">
+                                    <field name="folder_name" string="Раздел"/>
+                                    <field name="model_id" string="Модель Odoo"/>
+                                    <field name="folder_file_id" string="ID NC"/>
+                                    <field name="folder_path" string="Путь на сервере"/>
+                                </list>
+                                <form string="Root Mapping">
+                                    <sheet>
+                                        <group>
+                                            <group string="Связь с Odoo">
+                                                <field name="folder_name"/>
+                                                <field name="model_id" readonly="1"/>
+                                                <field name="res_id" readonly="1"/>
+                                            </group>
+                                            <group string="Связь с Nextcloud">
+                                                <field name="folder_id" string="Папка в списке файлов"/>
+                                                <field name="folder_file_id" readonly="1"/>
+                                                <field name="folder_path" readonly="1"/>
+                                            </group>
+                                        </group>
+                                    </sheet>
+                                </form>
+                            </field>
+                        </page>
+                    </notebook>
                 </sheet>
             </form>
         </field>
@@ -69,12 +68,10 @@
         <field name="name">nextcloud.client.list</field>
         <field name="model">nextcloud.client</field>
         <field name="arch" type="xml">
-            <list string="Nextcloud Clients" create="0">
+            <list string="Nextcloud Clients">
                 <field name="name"/>
                 <field name="url"/>
-                <field name="username"/>
-                <field name="root_path"/>
-                <field name="state" widget="badge" decoration-success="state == 'confirmed'"/>
+                <field name="state" widget="badge"/>
             </list>
         </field>
     </record>

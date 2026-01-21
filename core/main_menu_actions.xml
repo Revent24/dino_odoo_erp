@@ -24,8 +24,8 @@
         <field name="name">Sales Projects</field>
         <field name="res_model">dino.project</field>
         <field name="view_mode">list,form</field>
-        <field name="context">{'default_project_type': 'sale', 'partner_role_filter': 'customer', 'default_partner_role': 'customer'}</field>
-        <field name="domain">[('project_type','=','sale')]</field>
+        <field name="context" eval="{'default_project_category_id': ref('dino_erp.project_category_income'), 'partner_role_filter': 'customer', 'default_partner_role': 'customer'}"/>
+        <field name="domain">[('project_category_id.code','=','income')]</field>
         <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_sale'),'tree'),(ref('dino_erp.view_dino_project_form_sale'),'form')]"/>
     </record>
 
@@ -109,8 +109,8 @@
        <field name="res_model">dino.project</field>
        <field name="view_mode">list,form</field>
        <field name="views" eval="[(ref('dino_erp.view_dino_project_tree'),'tree'),(ref('dino_erp.view_dino_project_form'),'form')]"/>
-       <field name="context">{'default_project_type': 'overhead'}</field>
-       <field name="domain">[('project_type','!=','sale')]</field>
+       <field name="context" eval="{'default_project_category_id': ref('dino_erp.project_category_expense')}"/>
+       <field name="domain">[('project_category_id.code','!=','income')]</field>
        <field name="help" type="html">
            <p class="o_view_nocontent_smiling_face">
                Create a new project
@@ -123,8 +123,8 @@
        <field name="name">Purchase Projects</field>
        <field name="res_model">dino.project</field>
        <field name="view_mode">list,form</field>
-       <field name="context">{'default_project_type': 'purchase', 'partner_role_filter': 'vendor', 'default_partner_role': 'vendor'}</field>
-       <field name="domain">[('project_type','=','purchase')]</field>
+       <field name="context" eval="{'default_project_category_id': ref('dino_erp.project_category_expense'), 'partner_role_filter': 'vendor', 'default_partner_role': 'vendor'}"/>
+       <field name="domain">[('project_category_id.code','=','expense')]</field>
        <field name="views" eval="[(ref('dino_erp.view_dino_project_tree_purchase'),'tree'),(ref('dino_erp.view_dino_project_form_purchase'),'form')]"/>
    </record>
 
@@ -225,6 +225,7 @@ if client:
         'res_id': client.id,
         'view_mode': 'form',
         'target': 'current',
+        'flags': {'create': False, 'delete': False, 'edit': True},
     }
 else:
     action = {
@@ -233,6 +234,7 @@ else:
         'res_model': 'nextcloud.client',
         'view_mode': 'form',
         'target': 'current',
+        'flags': {'create': False, 'delete': False, 'edit': True},
     }
 </field>
         </record> 

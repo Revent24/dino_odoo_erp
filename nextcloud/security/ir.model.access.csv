@@ -2,3 +2,4 @@ id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_nextcloud_client,nextcloud.client,model_nextcloud_client,base.group_user,1,1,0,0
 access_nextcloud_file_user,access_nextcloud_file_user,model_nextcloud_file,base.group_user,1,0,0,0
 access_nextcloud_file_manager,access_nextcloud_file_manager,model_nextcloud_file,base.group_system,1,1,1,1
+access_nextcloud_root_map,access_nextcloud_root_map,model_nextcloud_root_map,base.group_system,1,1,1,1

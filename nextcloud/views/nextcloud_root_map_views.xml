@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!-- File nextcloud/views/nextcloud_root_map_views.xml -->
+<odoo>
+    <record id="view_nextcloud_root_map_tree" model="ir.ui.view">
+        <field name="name">nextcloud.root.map.tree</field>
+        <field name="model">nextcloud.root.map</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <list create="0" delete="0">
+                <field name="folder_name"/>
+                <field name="model_id"/>
+                <field name="folder_file_id"/>
+                <field name="folder_path" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_nextcloud_root_map_form" model="ir.ui.view">
+        <field name="name">nextcloud.root.map.form</field>
+        <field name="model">nextcloud.root.map</field>
+        <field name="priority">10</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="model_id" options="{'no_create': True}"/>
+                        <field name="folder_id" domain="[('client_id', '=', parent.id), ('file_type', '=', 'dir')]"/>
+                        <field name="path" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>
+<!-- End -->

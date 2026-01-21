@@ -1,2 +1,8 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_dino_project_category_user,dino.project.category.user,model_dino_project_category,base.group_user,1,1,1,1
+access_dino_project_category_admin,dino.project.category.admin,model_dino_project_category,base.group_system,1,1,1,1
+access_dino_project_category_public,dino.project.category.public,model_dino_project_category,,1,0,0,0
 access_dino_project_payment_user,dino.project.payment.user,model_dino_project_payment,base.group_user,1,1,1,1
+access_dino_project_type_user,dino.project.type.user,model_dino_project_type,base.group_user,1,1,1,1
+access_dino_project_type_admin,dino.project.type.admin,model_dino_project_type,base.group_system,1,1,1,1
+access_dino_project_type_public,dino.project.type.public,model_dino_project_type,,1,0,0,0

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <record id="project_category_income" model="dino.project.category">
+            <field name="name">Доходы</field>
+            <field name="code">income</field>
+            <field name="storage_location">Папка Доходов</field>
+            <field name="is_system">True</field>
+        </record>
+        <record id="project_category_expense" model="dino.project.category">
+            <field name="name">Расходы</field>
+            <field name="code">expense</field>
+            <field name="storage_location">Папка Расходов</field>
+            <field name="is_system">True</field>
+        </record>
+    </data>
+</odoo>

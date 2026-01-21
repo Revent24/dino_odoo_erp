@@ -3,7 +3,7 @@
 # 
 
 from urllib.parse import quote, unquote
-from ..models.nextcloud_api import NextcloudConnector
+from .nextcloud_api import NextcloudConnector
 
 class NextcloudDAV:
     def __init__(self, client):

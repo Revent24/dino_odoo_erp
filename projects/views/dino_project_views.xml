@@ -6,8 +6,8 @@
                         Описание для разработчиков:
                         - Содержит tree/form представления и соответствующие действия (act_window)
                             для трёх типов проектов: sale, purchase, overhead.
-                        - Действия используют контекст `default_project_type`, чтобы при создании
-                            новой записи через соответствующее действие поле `project_type` устанавливалось
+                        - Действия используют контекст `default_project_category_id`, чтобы при создании
+                            новой записи через соответствующее действие поле `project_category_id` устанавливалось
                             автоматически.
                         - Главный action `action_dino_project` имеет домен, исключающий продажи
                             (project_type != 'sale'), и контекст по умолчанию 'overhead'.
@@ -23,8 +23,10 @@
                 <list string="Projects">
                     <field name="name"/>
                     <field name="date"/>
-                    <field name="project_type"/>
+                    <field name="project_category_id"/>
+                    <field name="project_type_id"/>
                     <field name="partner_id" options="{'no_create': False}"/>
+                    <field name="nc_path_ids"/>
                 </list>
             </field>
         </record>
@@ -37,9 +39,8 @@
             <field name="arch" type="xml">
                 <form string="Project">
                     <sheet>
-                        <widget name="web_ribbon" title="ПРОДАЖА" bg_color="bg-success" invisible="project_type != 'sale'"/>
-                        <widget name="web_ribbon" title="ЗАКУПКА" bg_color="bg-warning" invisible="project_type != 'purchase'"/>
-                        <widget name="web_ribbon" title="РАСХОД" bg_color="bg-danger" invisible="project_type != 'overhead'"/>
+                        <widget name="web_ribbon" title="ДОХОДЫ" bg_color="bg-success" invisible="project_category_id.code != 'income'"/>
+                        <widget name="web_ribbon" title="РАСХОДЫ" bg_color="bg-danger" invisible="project_category_id.code != 'expense'"/>
 
                         <div class="oe_title">
                             <h1>
@@ -50,9 +51,12 @@
                         </div>
                         <group>
                             <field name="date" required="1"/>
-                            <field name="project_type" widget="radio" options="{'horizontal': True}" required="1"/>
+                            <field name="project_category_id" readonly="1"/>
+                            <field name="project_type_id"/>
                             <field name="partner_id" options="{'no_create': False}"/>
                             <field name="vat_rate" readonly="1"/>
+                            <field name="storage_location" readonly="1"/>
+                            <field name="nc_path_ids" readonly="1"/>
                             <field name="document_count" readonly="1"/>
                         </group>
 
@@ -169,7 +173,7 @@
                         <group>
                             <field name="name" required="1"/>
                             <field name="date" required="1"/>
-                            <field name="project_type" invisible="1"/>
+                            <field name="project_category_id" invisible="1"/>
                             <field name="partner_id" options="{'no_create': False}"/>
                         </group>
                         <notebook>

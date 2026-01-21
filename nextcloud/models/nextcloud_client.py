@@ -9,7 +9,7 @@ import logging
 
 # Проверь путь! Если api.py в папке tools, то: from ..tools.nextcloud_api import NextcloudConnector
 # Если в папке models, оставляем так:
-from .nextcloud_api import NextcloudConnector
+from ..tools.nextcloud_api import NextcloudConnector
 
 _logger = logging.getLogger(__name__)
 
@@ -21,16 +21,18 @@ class NextcloudClient(models.Model):
     url = fields.Char(string='Base URL', required=True, default='http://localhost:8080')
     username = fields.Char(string='Username', required=True, default='admin')
     password = fields.Char(string='Password', required=True, default='admin')
-    root_path = fields.Char(string='Target Folder ID or Link', help="ID папки из Nextcloud (Settings -> Copy Link)")
+    root_path = fields.Char(string='Root Path', readonly=True)
     
     state = fields.Selection([('draft', 'Draft'), ('confirmed', 'Connected')], default='draft')
-    root_folder_id = fields.Many2one(comodel_name='nextcloud.file', string='Main Folder', readonly=True)
-    root_folder_path = fields.Char(related='root_folder_id.path', string='Actual Path', readonly=True)
+    root_folder_id = fields.Char(string='Nextcloud Folder ID', readonly=False)
+    root_folder_path = fields.Char(string='Actual Path', readonly=True)
+
+    root_maps = fields.One2many('nextcloud.root.map', 'client_id', string='Root Folders')
 
     def _req(self, method, path, data=None, headers=None):
         """Базовый метод для всех запросов к Nextcloud"""
-        # Убираем возможные дубли слэшей
-        clean_path = path if path.startswith('/') else f'/{path}'
+        # Гарантируем один слэш между url и path
+        clean_path = '/' + path.lstrip('/')
         full_url = f"{self.url.rstrip('/')}{clean_path}"
         auth = (self.username, self.password)
         try:
@@ -40,48 +42,51 @@ class NextcloudClient(models.Model):
             _logger.error("Nextcloud Request Error: %s", str(e))
             raise UserError(f"Ошибка связи с сервером: {str(e)}")
 
+    def action_reset_id(self):
+        self.write({'root_folder_id': False, 'root_folder_path': False, 'state': 'draft'})
+
     def action_test_connection(self):
         self.ensure_one()
-        if not self.root_path:
-            raise UserError("Укажите Target Folder ID или Link")
-            
-        raw_input = self.root_path.strip().rstrip('/')
-        folder_id = raw_input.split('/')[-1] if not raw_input.isdigit() and '/' in raw_input else raw_input
+        _logger.info("NC_DEBUG: Тестирование соединения (ID: %s)", self.root_folder_id)
+        
+        if not self.root_folder_id:
+            # ТЕСТ НА ПУСТОМ ID: создаем папку по умолчанию
+            path, ids = NextcloudConnector.ensure_path_v2(self, ['Odoo Docs'])
+            if ids:
+                self.write({
+                    'root_folder_id': ids[-1].lstrip('0'),
+                    'root_folder_path': path,
+                    'state': 'confirmed'
+                })
+            else:
+                raise UserError("Не удалось создать корневую папку автоматически.")
+        else:
+            # ПОИСК ПО УКАЗАННОМУ ID
+            info = NextcloudConnector.get_info_by_id(self, self.root_folder_id)
+            if info and info.get('path'):
+                self.write({
+                    'root_folder_path': info['path'],
+                    'state': 'confirmed'
+                })
+            else:
+                self.write({'state': 'draft'})
+                raise UserError(f"Папка с ID {self.root_folder_id} не найдена на сервере.")
 
-        # Только проверка пути, без глубокого сканирования содержимого
-        href = NextcloudConnector.get_path_by_id(self, folder_id)
-        if not href:
-            raise UserError(f"Папка с ID {folder_id} не найдена.")
-
-        decoded_path = unquote(href).rstrip('/')
-        name = decoded_path.split('/')[-1] or f"Root_{folder_id[:8]}"
-
-        vals = {
-            'name': name, 
-            'path': href, 
-            'file_type': 'dir', 
-            'client_id': self.id, 
-            'file_id': folder_id
+        # Возвращаем действие для обновления интерфейса (reload)
+        return {
+            'type': 'ir.actions.client',
+            'tag': 'display_notification',
+            'params': {
+                'title': 'Успех',
+                'message': 'Данные синхронизированы',
+                'type': 'success',
+                'next': {'type': 'ir.actions.client', 'tag': 'reload'},
+            }
         }
 
-        file_obj = self.env['nextcloud.file']
-        root_file = file_obj.search([('client_id', '=', self.id), ('file_id', '=', folder_id)], limit=1)
-
-        if root_file:
-            root_file.with_context(no_nextcloud_move=True).write(vals)
-        else:
-            root_file = file_obj.with_context(no_nextcloud_move=True).create(vals)
-        
-        self.write({
-            'root_folder_id': root_file.id,
-            'state': 'confirmed'
-        })
-
-        # Возвращаем простое обновление страницы без уведомлений и задержек
-        return {'type': 'ir.actions.client', 'tag': 'reload'}
-
     def action_edit_connection(self):
-        self.write({'state': 'draft'})
+        """Возвращает состояние в draft для редактирования настроек"""
+        self.ensure_one()
+        self.state = 'draft'
         return True
-
 # -*- End of file nextcloud/models/nextcloud_client.py -*-
