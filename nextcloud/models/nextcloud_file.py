@@ -19,6 +19,7 @@ class NextcloudFile(models.Model):
 
     name = fields.Char('File Name') 
     file_id = fields.Char('ID (Server)', readonly=True, index=True)
+    parent_file_id = fields.Char('Parent ID (Server)', readonly=True)
     path = fields.Char('Remote Path', readonly=True)
     path_readable = fields.Char('Путь', compute='_compute_path_readable')
     file_type = fields.Selection([('file', 'File'), ('dir', 'Directory')], string='Type', readonly=True)
@@ -43,7 +44,8 @@ class NextcloudFile(models.Model):
                 'target': 'current',
             }
 
-        c_id = client.root_folder_id.lstrip('0')
+        connector = client._get_connector()
+        c_id = str(connector._clean_id(client.root_folder_id))
         root_node = self.search([('client_id', '=', client.id), ('file_id', '=', c_id)], limit=1)
 
         if not root_node:
@@ -87,37 +89,75 @@ class NextcloudFile(models.Model):
             color = "#ffc107" if rec.file_type == 'dir' else "#6c757d"
             rec.icon_html = f'<i class="fa {icon}" style="color: {color}; font-size: 1.4rem; vertical-align: middle;"></i>'
 
-    @api.depends('path')
+    @api.depends('name', 'parent_id', 'parent_id.path_readable')
     def _compute_path_readable(self):
+        """
+        Хлебные крошки: расчет читаемого пути на основе иерархии parent_id.
+        """
         for rec in self:
-            rec.path_readable = unquote(rec.path) if rec.path else ""
+            if rec.parent_id:
+                rec.path_readable = f"{rec.parent_id.path_readable} / {rec.name}"
+            else:
+                rec.path_readable = rec.name or ""
 
     def write(self, vals):
+        """
+        Обновление записи файла. Если изменяется имя, выполняется переименование в Nextcloud.
+        С защитой расширений файлов.
+        """
         if 'name' in vals and not self._context.get('no_nextcloud_move'):
             for record in self:
-                if record.file_type == 'dir':
-                    # Передаем объект клиента record.client_id
-                    new_path, success = NextcloudConnector.rename_node(record.client_id, record.path, vals['name'])
-                    if success:
-                        vals['path'] = new_path
+                if record.client_id and record.file_id:
+                    new_name = vals['name']
+                    # Защита расширения
+                    if record.file_type == 'file':
+                        old_ext = os.path.splitext(record.name)[1] if record.name else ""
+                        new_ext = os.path.splitext(new_name)[1]
+                        if old_ext and old_ext != new_ext:
+                            new_name = os.path.splitext(new_name)[0] + old_ext
+                            vals['name'] = new_name
+
+                    try:
+                        connector = record.client_id._get_connector()
+                        username = record.client_id.username
+                        prefix = f"/remote.php/dav/files/{username}/"
+                        
+                        # Получаем текущий путь из record.path или через API
+                        current_path = record.path or record._resolve_actual_path()
+                        if not current_path:
+                            continue
+                            
+                        clean_old_path = current_path.replace(prefix, "").strip("/")
+                        parent_dir = '/'.join(clean_old_path.split('/')[:-1])
+                        new_clean_path = f"{parent_dir}/{new_name}".strip("/")
+                        
+                        connector.move_object(record.file_id, new_clean_path)
+                        
+                        # Обновляем путь в записи
+                        data = connector.get_object_data(file_id=record.file_id)
+                        if data:
+                             vals['path'] = data['href']
+                    except Exception as e:
+                        _logger.error("Ошибка переименования в NC: %s", e)
+                        raise UserError(f"Ошибка Nextcloud: {e}")
         return super(NextcloudFile, self).write(vals)
-    
-    def _get_clean_path(self, path_str):
-        if not path_str: return ''
-        return unquote(urlparse(path_str).path).strip('/')
 
     def _resolve_actual_path(self):
-        """Проверка актуальности пути по ID (самозаживление связей)"""
+        """Проверка актуальности пути по ID (v.2.0)"""
         self.ensure_one()
         if not self.file_id or not self.client_id: 
             return self.path
         
-        new_path = NextcloudConnector.get_path_by_id(self.client_id, self.file_id)
-        if new_path and new_path != self.path:
-            _logger.info("Путь для %s изменился в облаке. Обновляем: %s -> %s", self.name, self.path, new_path)
-            self.env.cr.execute("UPDATE nextcloud_file SET path=%s WHERE id=%s", (new_path, self.id))
-            return new_path
-        return self.path
+        try:
+            connector = self.client_id._get_connector()
+            data = connector.get_object_data(file_id=self.file_id)
+            if data and data['href'] != self.path:
+                _logger.info("Путь для %s изменился. Обновляем: %s -> %s", self.name, self.path, data['href'])
+                self.with_context(no_nextcloud_move=True).write({'path': data['href']})
+                return data['href']
+            return data['href'] if data else self.path
+        except Exception:
+            return self.path
 
     def action_open_folder(self):
         self.ensure_one()
@@ -139,87 +179,88 @@ class NextcloudFile(models.Model):
         }
 
     def _sync_folder_contents(self):
-        """Основная логика синхронизации содержимого папки"""
+        """
+        Синхронизация содержимого папки с сервером Nextcloud (v.2.0).
+        """
         self.ensure_one()
-        self = self.with_context(no_nextcloud_move=True)
+        client_rec = self.client_id
+        if not client_rec:
+            return
 
-        # 1. Актуализируем путь по ID перед запросом
-        client = self.client_id._get_client()
-        actual_path = NextcloudConnector.get_path_by_id(client, self.file_id)
-        if actual_path and actual_path != self.path:
-            _logger.info("Обновление пути для файла %s: %s -> %s", self.file_id, self.path, actual_path)
-            self.path = actual_path
+        connector = client_rec._get_connector()
 
-        # 2. Используем актуальный путь для запроса
-        path_to_query = self.path
+        # 1. Актуализируем путь текущей папки
+        actual_path = self._resolve_actual_path()
+        username = client_rec.username
+        prefix = f"/remote.php/dav/files/{username}"
+        clean_path = actual_path.replace(prefix, "").strip("/")
+
+        # 2. Получаем содержимое через PROPFIND Depth: 1
         headers = {'Depth': '1', 'Content-Type': 'application/xml'}
-        body = """<?xml version="1.0" encoding="UTF-8"?>
-        <d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
-            <d:prop>
-                <d:displayname/><d:getcontentlength/><oc:size/><d:getlastmodified/><d:resourcetype/><oc:fileid/>
-            </d:prop>
-        </d:propfind>"""
+        body = (
+            '<?xml version="1.0" encoding="utf-8" ?>'
+            '<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">'
+            '  <d:prop>'
+            '    <d:displayname/>'
+            '    <d:resourcetype/>'
+            '    <oc:fileid/>'
+            '    <d:getcontentlength/>'
+            '    <d:getlastmodified/>'
+            '  </d:prop>'
+            '</d:propfind>'
+        )
+        
+        response = connector._do_request('PROPFIND', path=clean_path, headers=headers, data=body)
+        if response.status_code not in (200, 207):
+            _logger.error("Sync failed for path %s: %s", clean_path, response.status_code)
+            return
 
-        res = self.client_id._req('PROPFIND', path_to_query, data=body.encode('utf-8'), headers=headers)
-        if res.status_code not in [200, 207]: 
-            _logger.warning("PROPFIND failed for %s: %s", path_to_query, res.status_code)
-            return False
+        from lxml import etree
+        root = etree.fromstring(response.content)
+        ns = {'d': 'DAV:', 'oc': 'http://owncloud.org/ns'}
 
-        try:
-            tree = ET.fromstring(res.content)
-            norm_current = self._get_clean_path(path_to_query).strip('/')
+        responses = root.xpath('//d:response', namespaces=ns)
+        # Пропускаем саму папку (первый элемент)
+        for resp in responses[1:]:
+            href = resp.xpath('.//d:href/text()', namespaces=ns)[0]
+            name_list = resp.xpath('.//d:displayname/text()', namespaces=ns)
+            name = name_list[0] if name_list else unquote(href.rstrip('/').split('/')[-1])
+            f_id_list = resp.xpath('.//oc:fileid/text()', namespaces=ns)
+            f_id = f_id_list[0] if f_id_list else None
+            
+            res_type = resp.find('.//d:resourcetype', ns)
+            is_dir = res_type is not None and res_type.find('.//d:collection', ns) is not None
+            
+            size_list = resp.xpath('.//d:getcontentlength/text()', namespaces=ns)
+            size = float(size_list[0]) / (1024 * 1024) if size_list else 0.0
+            
+            mod_list = resp.xpath('.//d:getlastmodified/text()', namespaces=ns)
+            last_mod = parsedate_to_datetime(mod_list[0]).replace(tzinfo=None) if mod_list else False
 
-            for resp in tree.findall('.//{*}response'):
-                href_node = resp.find('.//{*}href')
-                if href_node is None: continue
+            if not f_id:
+                continue
 
-                href_text = href_node.text
-                norm_href = self._get_clean_path(href_text).strip('/')
+            file_vals = {
+                'name': name,
+                'file_id': str(f_id),
+                'parent_file_id': self.file_id,
+                'path': href,
+                'file_type': 'dir' if is_dir else 'file',
+                'size': size,
+                'last_modified': last_mod,
+                'client_id': client_rec.id,
+                'parent_id': self.id,
+            }
 
-                # Пропускаем саму текущую папку
-                if norm_href == norm_current: continue
+            existing = self.env['nextcloud.file'].search([
+                ('client_id', '=', client_rec.id),
+                ('file_id', '=', str(f_id))
+            ], limit=1)
 
-                f_id, mod_date, f_size = False, False, 0.0
-                prop_node = resp.find('.//{*}prop')
-                if prop_node is not None:
-                    for child in prop_node:
-                        tag = child.tag.split('}')[-1]
-                        if tag == 'fileid': 
-                            f_id = child.text
-                            if f_id: 
-                                f_id = f_id.lstrip('0')
-                        if tag == 'getlastmodified' and child.text:
-                            try: mod_date = parsedate_to_datetime(child.text).replace(tzinfo=None)
-                            except: pass
-                        if tag == 'size' and child.text:
-                            f_size = float(child.text)
-                        elif tag == 'getcontentlength' and child.text and f_size == 0:
-                            f_size = round(float(child.text) / (1024*1024), 2)
-
-                is_dir = resp.find('.//{*}collection') is not None
-                name = unquote(norm_href.split('/')[-1])
-                if not name and is_dir:
-                    parts = norm_href.split('/')
-                    name = unquote(parts[-2]) if len(parts) > 1 else 'Folder'
-
-                vals = {
-                    'name': name, 'path': href_text, 'file_id': f_id, 'file_type': 'dir' if is_dir else 'file',
-                    'client_id': self.client_id.id, 'parent_id': self.id,
-                    'last_modified': mod_date, 'size': f_size
-                }
-
-                domain = [('client_id', '=', self.client_id.id), ('file_id', '=', f_id)] if f_id else [('path', '=', href_text)]
-                existing = self.search(domain, limit=1)
-
-                if existing:
-                    existing.write(vals)
-                else:
-                    self.create(vals)
-
-            return True
-        except Exception as e:
-            _logger.error("Ошибка при разборе XML синхронизации: %s", str(e))
-            return False
+            if existing:
+                existing.with_context(no_nextcloud_move=True).write(file_vals)
+            else:
+                self.env['nextcloud.file'].with_context(no_nextcloud_move=True).create(file_vals)
 
     def action_sync_current_folder(self):
         folder = self if self.file_type == 'dir' else self.parent_id

@@ -1,23 +1,17 @@
-# Установка и развертывание Nextcloud для хранения и работы с файлами
+# Установка и развертывание Nextcloud на Ubuntu 22.04 с Docker Compose
 
-Nextcloud — это бесплатная платформа для хранения файлов в облаке, аналог Dropbox или Google Drive, но с собственным сервером. Она позволяет синхронизировать файлы, делиться ими, редактировать документы онлайн и многое другое. Эта инструкция поможет установить Nextcloud на сервер (Ubuntu 22.04) с помощью Docker Compose для простоты и переносимости.
+Nextcloud — это бесплатная платформа для облачного хранения файлов. Эта инструкция поможет установить Nextcloud с использованием Docker Compose.
 
-## Предварительные требования
-- Сервер с Ubuntu 22.04 (или WSL Ubuntu на Windows).
-- Доступ по SSH (если сервер удалённый).
-- Домен, направленный на IP сервера (для HTTPS).
-- Docker и Docker Compose установлены (если нет, см. шаг 1).
-- Базовые знания командной строки.
+## Требования
+- Ubuntu 22.04 (или WSL Ubuntu).
+- Установленные Docker и Docker Compose.
+- Домен, направленный на сервер (для HTTPS).
 
-## Пошаговая инструкция по установке
+## Шаги установки
 
-### Шаг 1: Установка Docker и Docker Compose
-Если Docker не установлен, выполните:
+### 1. Установка Docker и Docker Compose
 ```bash
-# Обновление системы
 sudo apt update && sudo apt upgrade -y
-
-# Установка зависимостей
 sudo apt install -y ca-certificates curl gnupg lsb-release
 
 # Добавление репозитория Docker
@@ -28,28 +22,22 @@ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docke
 sudo apt update
 sudo apt install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 
-# Добавление пользователя в группу docker (для запуска без sudo)
+# Добавление пользователя в группу docker
 sudo usermod -aG docker $USER
-
-# Перезагрузка или перелогин для применения изменений
 ```
+Перезагрузите систему или выполните повторный вход в систему.
 
-### Шаг 2: Создание папки проекта
-Перейдите в папку nextcloud (или создайте, если нет):
+### 2. Создание проекта
 ```bash
-cd /home/steve/OdooApps/odoo_projects/dino24_addons/dino_erp/nextcloud
+mkdir -p ~/nextcloud && cd ~/nextcloud
 ```
 
-### Шаг 3: Создание файла docker-compose.yml
-Создайте файл `docker-compose.yml` с конфигурацией для Nextcloud, MariaDB и Traefik (для авто-HTTPS). Замените PLACEHOLDERS:
-- `DOMAIN.example.com` — ваш домен.
-- `EMAIL@example.com` — email для Let's Encrypt.
-- Пароли: придумайте сильные (минимум 12 символов, с буквами, цифрами, символами).
-
+### 3. Создание docker-compose.yml
+Создайте файл `docker-compose.yml` со следующим содержимым:
 ```yaml
 version: "3.8"
+
 services:
-  # Traefik для прокси и авто-TLS
   traefik:
     image: traefik:2.10
     command:
@@ -59,7 +47,6 @@ services:
       - "--certificatesresolvers.myresolver.acme.tlschallenge=true"
       - "--certificatesresolvers.myresolver.acme.email=EMAIL@example.com"
       - "--certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json"
-      - "--log.level=INFO"
     ports:
       - "80:80"
       - "443:443"
@@ -68,33 +55,39 @@ services:
       - ./letsencrypt:/letsencrypt
     restart: unless-stopped
 
-  # База данных MariaDB
   db:
     image: mariadb:10.11
     environment:
-      MYSQL_ROOT_PASSWORD: CHANGE_ROOT_PASSWORD
+      MYSQL_ROOT_PASSWORD: strong_root_password
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
-      MYSQL_PASSWORD: CHANGE_DB_PASSWORD
+      MYSQL_PASSWORD: strong_password
     volumes:
       - db_data:/var/lib/mysql
     restart: unless-stopped
 
-  # Nextcloud приложение
+  redis:
+    image: redis:alpine
+    restart: unless-stopped
+
   app:
-    image: nextcloud:28-apache
+    image: nextcloud:latest
     depends_on:
       - db
+      - redis
+    ports:
+      - "8080:80"  # Проброс порта 8080 на 80
     environment:
       MYSQL_HOST: db
       MYSQL_DATABASE: nextcloud
       MYSQL_USER: nextcloud
-      MYSQL_PASSWORD: CHANGE_DB_PASSWORD
+      MYSQL_PASSWORD: strong_password
+      REDIS_HOST: redis
     volumes:
       - nextcloud_data:/var/www/html
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.nextcloud.rule=Host(`DOMAIN.example.com`)"
+      - "traefik.http.routers.nextcloud.rule=Host(`DOMAIN.example.com`)" 
       - "traefik.http.routers.nextcloud.entrypoints=websecure"
       - "traefik.http.routers.nextcloud.tls.certresolver=myresolver"
     restart: unless-stopped
@@ -103,47 +96,59 @@ volumes:
   db_data:
   nextcloud_data:
 ```
+Замените `DOMAIN.example.com` и `EMAIL@example.com` на ваш домен и email.
 
-### Шаг 4: Настройка сервера и запуск
+### 4. Запуск контейнеров
+После перехода в директорию с файлом `docker-compose.yml` выполните следующую команду для запуска контейнеров:
 ```bash
-# Создание папки для сертификатов и установка прав
-mkdir -p ./letsencrypt
-sudo chown 1000:1000 ./letsencrypt || true
+docker-compose up -d
+```
+Эта команда запустит все сервисы, указанные в файле `docker-compose.yml`, в фоновом режиме.
 
-# Открытие портов в брандмауэре (ufw)
-sudo ufw allow OpenSSH
-sudo ufw allow 80/tcp
-sudo ufw allow 443/tcp
-sudo ufw enable
+### 5. Настройка Nextcloud
+1. Перейдите на `https://DOMAIN.example.com`.
+2. Создайте учётную запись администратора.
+3. Укажите настройки базы данных:
+   - Тип: MySQL/MariaDB
+   - Хост: db
+   - База: nextcloud
+   - Пользователь: nextcloud
+   - Пароль: strong_password
+4. Нажмите "Установить".
 
-# Запуск контейнеров
-docker compose up -d
+### 6. Рекомендации
+- **Обновления**: `docker compose pull && docker compose up -d`
+- **Бэкапы**: Сохраняйте volumes (db_data, nextcloud_data).
+- **Безопасность**: Используйте 2FA, проверяйте логи: `docker compose logs`.
+
+### 7. Поиск существующих файлов конфигурации
+Если вы хотите найти уже существующие файлы `docker-compose.yml` или `compose.yml` на вашем сервере, выполните следующую команду:
+```bash
+find ~ -type f \( -name "docker-compose.yml" -o -name "compose.yml" \) 2>/dev/null
+```
+Эта команда выполнит поиск в домашней директории и выведет пути к найденным файлам. Если файлы отсутствуют, создайте их, следуя шагу 3.
+
+### 8. Переход в найденную директорию
+После выполнения команды поиска, если вы нашли нужный файл конфигурации, перейдите в соответствующую директорию. Например:
+```bash
+cd /home/steve/nextcloud_stack
+```
+Это позволит вам работать с найденной конфигурацией и запускать контейнеры из этой директории.
+
+### 9. Настройка Nextcloud после загрузки контейнеров
+После успешного запуска контейнеров выполните следующие команды для настройки локального кэша и подключения к Redis:
+
+1. Настройка локального кэша:
+```bash
+docker exec -u www-data nextcloud_stack_app_1 php occ config:system:set memcache.local --value '\\OC\\Memcache\\APCu'
 ```
 
-### Шаг 5: Первичная настройка Nextcloud
-- Откройте браузер и перейдите на `https://DOMAIN.example.com` (HTTPS должен заработать автоматически через Traefik и Let's Encrypt).
-- Создайте учётную запись администратора (имя пользователя, пароль).
-- На странице настройки БД укажите:
-  - Тип: MySQL/MariaDB
-  - Хост: db
-  - База: nextcloud
-  - Пользователь: nextcloud
-  - Пароль: CHANGE_DB_PASSWORD (как в compose).
-- Нажмите "Установить".
+2. Настройка блокировок файлов через Redis (чтобы избежать конфликтов с Odoo):
+```bash
+docker exec -u www-data nextcloud_stack_app_1 php occ config:system:set memcache.locking --value '\\OC\\Memcache\\Redis'
+```
 
-После установки вы увидите дашборд Nextcloud.
-
-## Работа с файлами в Nextcloud
-- **Загрузка файлов**: В веб-интерфейсе нажмите "Файлы" > "Загрузить" или перетащите файлы.
-- **Синхронизация**: Установите клиент Nextcloud на ПК/мобильное (скачайте с nextcloud.com). Введите URL сервера и учётные данные.
-- **Дележка**: Выберите файл > "Поделиться" > укажите пользователей или ссылку.
-- **Редактирование**: Для документов установите OnlyOffice или Collabora (через приложения в Nextcloud).
-- **Приложения**: В "Приложения" установите дополнительные модули (например, для календаря, контактов).
-
-## Обслуживание и безопасность
-- **Обновления**: Регулярно обновляйте образы: `docker compose pull && docker compose up -d`.
-- **Бэкапы**: Копируйте volumes (db_data, nextcloud_data) с помощью `docker run --rm -v nextcloud_db_data:/data -v $(pwd):/backup alpine tar czf /backup/db_backup.tar.gz -C /data .`.
-- **Безопасность**: Используйте сильные пароли, включите 2FA в настройках, мониторьте логи (`docker compose logs`).
-- **Траблшутинг**: Если не запускается, проверьте логи: `docker compose logs -f app`. Убедитесь, что порты открыты и домен корректен.
-
-Если возникнут проблемы или нужен вариант без Docker, уточните.
+3. Указание параметров подключения к Redis:
+```bash
+docker exec -u www-data nextcloud_stack_app_1 php occ config:system:set redis --value '{"host":"redis","port":6379}' --type json
+```

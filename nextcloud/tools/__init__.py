@@ -1,5 +1,4 @@
-
-from . import dav_api
+from . import nextcloud_xml_utils
 
 # End of file nextcloud/tools/__init__.py
 

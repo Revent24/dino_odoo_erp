@@ -1,8 +1,8 @@
 # -*- File: nextcloud/mixins/nextcloud_project_mixin.py -*-
-import logging
 from odoo import models, fields, api, _
 from odoo.exceptions import UserError
-from ..tools.nextcloud_api import NextcloudConnector
+import logging
+import json
 
 _logger = logging.getLogger(__name__)
 
@@ -10,9 +10,16 @@ class NextcloudProjectMixin(models.AbstractModel):
     _name = 'nextcloud.file.project.mixin'
     _inherit = 'nextcloud.file.base.mixin'
 
-    def _get_nc_client(self):
-        # Исправлено: ищем без user_id
-        return self.env['nextcloud.client'].search([('state', '=', 'confirmed')], limit=1)
+    nc_id_chain = fields.Char("NC ID Chain", copy=False)
+
+    @api.depends('nc_id_chain', 'date', 'name', 'project_category_id')
+    def _compute_nc_path_readable(self):
+        """Отображает иерархию папок в читаемом виде (v.2.0)"""
+        for rec in self:
+            parts = rec._get_project_path_parts()
+            rec.nc_path_readable = " / ".join(parts) if parts else ""
+
+    nc_path_readable = fields.Char("NC Path", compute='_compute_nc_path_readable')
 
     def _get_month_name(self, month_index):
         months = {1: 'січень', 2: 'лютий', 3: 'березень', 4: 'квітень', 5: 'травень', 
@@ -20,190 +27,158 @@ class NextcloudProjectMixin(models.AbstractModel):
                   10: 'жовтень', 11: 'листопад', 12: 'грудень'}
         return months.get(month_index, '')
 
-    def _get_nc_folder_parts(self):
-        """Возвращает список имен папок: [Категория, Год, Месяц, Проект]"""
+    def _get_project_path_parts(self):
+        """
+        Возвращает список частей пути (v.2.0): [Категория, Год, Месяц, Проект]
+        """
+        self.ensure_one()
         d = self.date or fields.Date.today()
+        category_name = self.project_category_id.name or 'Без категории'
         return [
-            self.project_category_id.name,  # Категория
-            f"{d.year} рік",  # Год
-            f"{d.year}-{d.month:02d} {self._get_month_name(d.month)}",  # Месяц
-            f"{d.strftime('%Y-%m-%d')} {self.name}"  # Проект
+            category_name,
+            f"{d.year} рік",
+            f"{d.year}-{d.month:02d} {self._get_month_name(d.month)}",
+            f"{d.strftime('%Y-%m-%d')} {self.name} [{self.id}]"
         ]
 
-    def _get_or_create_root_mapping(self, client):
-        category = self.project_category_id
-        if not category:
-            raise UserError("У проекта не выбрана категория!")
-
-        _logger.info("NC_DEBUG: Checking mapping for category: %s", category.name)
-
-        # 1. Ищем существующий маппинг для этой категории
-        mapping = self.env['nextcloud.root.map'].search([
-            ('model_id.model', '=', 'dino.project.category'),
-            ('res_id', '=', category.id),
-            ('client_id', '=', client.id)
-        ], limit=1)
-
-        nc_path = False
-        
-        # 2. Если маппинг есть, проверяем актуальность пути по ID
-        if mapping and mapping.folder_id and mapping.folder_id.file_id:
-            # Пытаемся получить актуальный путь из NC по сохраненному ID
-            nc_path = NextcloudConnector.get_path_by_id(client, mapping.folder_id.file_id)
-            if nc_path:
-                # Если путь в NC изменился (переименовали папку), обновляем в базе
-                if mapping.folder_id.path != nc_path:
-                    mapping.folder_id.with_context(no_nextcloud_move=True).write({'path': nc_path})
-        
-        # 3. Если по ID ничего не нашли, ищем по имени (как раньше)
-        if not nc_path:
-            # Синхронизация с NC: ищем или создаем папку по имени категории
-            base_root = client.root_folder_path
-            cat_path, cat_nc_id = NextcloudConnector.ensure_path(client, [category.name], base_root)
-
-            # Создаем/обновляем запись папки в Odoo
-            file_rec = self.env['nextcloud.file'].search([
-                ('client_id', '=', client.id),
-                ('file_id', '=', cat_nc_id)
-            ], limit=1)
-
-            file_vals = {
-                'name': category.name,
-                'path': cat_path,
-                'file_id': cat_nc_id,
-                'file_type': 'dir',
-                'client_id': client.id,
-            }
-
-            if file_rec:
-                file_rec.with_context(no_nextcloud_move=True).write(file_vals)
-            else:
-                file_rec = self.env['nextcloud.file'].with_context(no_nextcloud_move=True).create(file_vals)
-
-            # Создаем или обновляем маппинг
-            map_vals = {
-                'client_id': client.id,
-                'model_id': self.env['ir.model']._get('dino.project.category').id,
-                'res_id': category.id,
-                'folder_name': category.name,
-                'folder_id': file_rec.id,
-            }
-
-            if mapping:
-                mapping.write(map_vals)
-            else:
-                mapping = self.env['nextcloud.root.map'].create(map_vals)
-
-            return file_rec
-
-        return mapping.folder_id
-
     def action_ensure_nc_folder(self):
-        self.ensure_one()
-        client = self._get_nc_client()
-        import json
-
-        # 1. Получаем корень из маппинга категорий
-        mapping = self.env['nextcloud.root.map'].search([
-            ('model_id.model', '=', 'dino.project.category'),
-            ('res_id', '=', self.project_category_id.id),
-            ('client_id', '=', client.id)
-        ], limit=1)
-        
-        if not mapping or not mapping.folder_id or not mapping.folder_id.file_id:
-            # Если маппинга еще нет, сначала создаем/находим корень
-            category_folder = self._get_or_create_root_mapping(client)
-            mapping = self.env['nextcloud.root.map'].search([
-                ('model_id.model', '=', 'dino.project.category'),
-                ('res_id', '=', self.project_category_id.id),
-                ('client_id', '=', client.id)
-            ], limit=1)
-
-        # 2. Формируем желаемые имена [Категория, Год, Месяц, Проект]
-        parts = self._get_nc_folder_parts() 
-        
-        # 3. Инициализируем или загружаем ID
-        # Если поле пустое, создаем список, где первый элемент - ID корня
-        if not self.nc_path_ids and mapping and mapping.folder_id.file_id:
-            current_ids = json.dumps([mapping.folder_id.file_id])
-        else:
-            current_ids = self.nc_path_ids
-
-        # 4. Вызываем API v2
-        final_path, updated_ids = NextcloudConnector.ensure_path_v2(
-            client, 
-            parts, 
-            path_ids_json=current_ids,
-            base_path=client.root_folder_path or "Odoo Docs"  # Относительный путь от корня пользователя
-        )
-
-        if updated_ids:
-            self.write({
-                'nc_path_ids': json.dumps(updated_ids),
-            })
-            
-            # Обновляем запись в UI (nextcloud.file)
-            project_folder_id = updated_ids[-1]
-            file_rec = self.env['nextcloud.file'].search([('file_id', '=', project_folder_id)], limit=1)
-            
-            vals = {
-                'name': parts[-1],
-                'path': final_path,
-                'file_id': project_folder_id,
-                'res_model': self._name,
-                'res_id': self.id,
-            }
-            
-            if file_rec:
-                file_rec.with_context(no_nextcloud_move=True).write(vals)
-            else:
-                file_rec = self.env['nextcloud.file'].create(vals)
-                
-            self.write({'nc_folder_id': file_rec.id})
-
-    @api.model_create_multi
-    def create(self, vals_list):
-        records = super().create(vals_list)
-        for rec in records:
-            rec._update_category_mapping()
-        return records
-
-    def write(self, vals):
-        res = super().write(vals)
-        if any(field in vals for field in ['project_category_id', 'name', 'date']):
-            for rec in self:
-                rec._update_category_mapping()
-        return res
-
-    def _update_category_mapping(self):
         """
-        Синхронизирует папку категории. 
-        Если папка есть — обновляет её метаданные в NC по ID.
+        Создает/актуализирует полную иерархию папок в Nextcloud по ID (v.2.0).
+        Автоматически переименовывает или перемещает папки, если они изменились в Odoo.
         """
         self.ensure_one()
         client = self._get_nc_client()
-        if not client or not self.project_category_id:
+        if not client or not client.root_folder_id:
+            _logger.warning("NC Build: Client not ready.")
             return
 
-        # Получаем/Создаем маппинг через наш бронебойный метод
-        folder_rec = self._get_or_create_root_mapping(client)
+        connector = client._get_connector()
+        root_id = int(connector._clean_id(client.root_folder_id))
+        parts = self._get_project_path_parts()
         
-        # Если имя категории изменилось, переименовываем папку в Nextcloud по ID
-        if folder_rec.name != self.project_category_id.name:
-            _logger.info("NC_DEBUG: Переименование категории по ID %s -> %s", 
-                         folder_rec.file_id, self.project_category_id.name)
+        try:
+            chain = json.loads(self.nc_id_chain or "{}")
+        except:
+            chain = {}
+
+        # 1. Сначала актуализируем путь к корню (Odoo Docs)
+        root_info = connector.get_object_data(file_id=root_id)
+        if not root_info:
+            # Если корень пропал - пробуем перенастроить
+            client.set_root_folder_id()
+            root_id = int(connector._clean_id(client.root_folder_id))
+            root_info = connector.get_object_data(file_id=root_id)
+        
+        if not root_info:
+            raise UserError(_("Не удалось найти корневую папку в Nextcloud."))
+
+        current_parent_id = root_id
+        current_parent_path = root_info['path'] # Актуальный путь из сервера
+
+        new_chain = {}
+        segment_keys = ['cat_id', 'year_id', 'month_id', 'project_id']
+        
+        last_file_record = self.env['nextcloud.file'].search([
+            ('client_id', '=', client.id), 
+            ('file_id', '=', str(root_id))
+        ], limit=1)
+
+        for i, name in enumerate(parts):
+            key = segment_keys[i]
+            seg_id = chain.get(key)
+            expected_path = f"{current_parent_path}/{name}".strip("/")
             
-            new_path = NextcloudConnector.rename_node(
-                client, 
-                folder_rec.path, 
-                self.project_category_id.name, 
-                is_dir=True
-            )
+            actual_info = None
             
-            if new_path:
-                folder_rec.with_context(no_nextcloud_move=True).write({
-                    'name': self.project_category_id.name,
-                    'path': new_path
-                })
+            # Для общих папок (Категория, Год, Месяц) сначала ищем по имени в родителе
+            if i < 3:
+                child_id = connector.find_in_folder(current_parent_id, name)
+                if child_id:
+                    seg_id = child_id
+                    actual_info = connector.get_object_data(file_id=seg_id)
+                else:
+                    # Если по имени нет - обеспечиваем создание
+                    seg_id = connector.ensure_path_step(current_parent_id, name)
+                    actual_info = connector.get_object_data(file_id=seg_id)
+            else:
+                # Для папки самого ПРОЕКТА - ищем по ID из цепочки
+                if seg_id:
+                    actual_info = connector.find_by_id(seg_id, path_scope=current_parent_path)
+                    if not actual_info:
+                        actual_info = connector.find_by_id(seg_id)
+                    
+                    if actual_info:
+                        actual_path = actual_info['path'].strip("/")
+                        if actual_path != expected_path:
+                            _logger.info("Moving project folder ID %s: %s -> %s", seg_id, actual_path, expected_path)
+                            try:
+                                connector.move_object(seg_id, expected_path)
+                                actual_info = connector.get_object_data(path=expected_path)
+                            except Exception as e:
+                                _logger.error("Failed to move project: %s", e)
+
+                if not actual_info:
+                    # Если по ID не нашли - ищем по имени в текущем родителе
+                    child_id = connector.find_in_folder(current_parent_id, name)
+                    if child_id:
+                        seg_id = child_id
+                    else:
+                        seg_id = connector.ensure_path_step(current_parent_id, name)
+                    actual_info = connector.get_object_data(file_id=seg_id)
+            
+            # СИНХРОНИЗАЦИЯ локальной таблицы
+            if actual_info:
+                file_rec = self.env['nextcloud.file'].search([
+                    ('client_id', '=', client.id),
+                    ('file_id', '=', str(seg_id))
+                ], limit=1)
+                
+                vals = {
+                    'name': name, # Всегда используем имя из Odoo
+                    'file_id': str(seg_id),
+                    'path': actual_info['href'],
+                    'file_type': 'dir',
+                    'client_id': client.id,
+                    'parent_id': last_file_record.id if last_file_record else False,
+                }
+                
+                if not file_rec:
+                    file_rec = self.env['nextcloud.file'].create(vals)
+                else:
+                    file_rec.with_context(no_nextcloud_move=True).write(vals)
+                
+                last_file_record = file_rec
+
+            new_chain[key] = seg_id
+            current_parent_id = seg_id
+            current_parent_path = actual_info['path'] if actual_info else expected_path
+
+        # Финализация
+        self.with_context(no_nextcloud_move=True).write({
+            'nc_file_id': new_chain.get('project_id'),
+            'nc_path': actual_info.get('href') if actual_info else False,
+            'nc_id_chain': json.dumps(new_chain),
+            'nc_folder_id': last_file_record.id if last_file_record else False
+        })
+
+
+    def write(self, vals):
+        """
+        При изменении значимых полей (имя, дата, категория) 
+        запускаем выравнивание структуры в Nextcloud.
+        """
+        res = super(NextcloudProjectMixin, self).write(vals)
+        
+        # Если изменились поля, влияющие на путь, и мы не в режиме подавления перемещения
+        trigger_fields = ['date', 'name', 'project_category_id']
+        if any(f in vals for f in trigger_fields) and not self._context.get('no_nextcloud_move'):
+            for rec in self:
+                # Запускаем универсальный метод обеспечения структуры
+                # Он найдет все папки по ID и переименует/переместит их если нужно
+                try:
+                    rec.action_ensure_nc_folder()
+                except Exception as e:
+                    _logger.error("Failed to sync NC folder on write: %s", e)
+        return res
 
 # End of file nextcloud/mixins/nextcloud_project_mixin.py

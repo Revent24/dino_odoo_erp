@@ -26,18 +26,21 @@
                     <field name="project_category_id"/>
                     <field name="project_type_id"/>
                     <field name="partner_id" options="{'no_create': False}"/>
-                    <field name="nc_path_ids"/>
+                    <field name="nc_path_readable"/>
+                    <field name="nc_folder_id" widget="many2one_clickable" string="Folder"/>
                 </list>
             </field>
         </record>
         
 
-        <!-- Форма: форма проекта -->
         <record id="view_dino_project_form" model="ir.ui.view">
             <field name="name">dino.project.form</field>
             <field name="model">dino.project</field>
             <field name="arch" type="xml">
                 <form string="Project">
+                    <header>
+                        <button name="action_ensure_nc_folder" string="Sync NC" type="object" class="btn-primary"/>
+                    </header>
                     <sheet>
                         <widget name="web_ribbon" title="ДОХОДЫ" bg_color="bg-success" invisible="project_category_id.code != 'income'"/>
                         <widget name="web_ribbon" title="РАСХОДЫ" bg_color="bg-danger" invisible="project_category_id.code != 'expense'"/>
@@ -55,9 +58,9 @@
                             <field name="project_type_id"/>
                             <field name="partner_id" options="{'no_create': False}"/>
                             <field name="vat_rate" readonly="1"/>
-                            <field name="storage_location" readonly="1"/>
-                            <field name="nc_path_ids" readonly="1"/>
-                            <field name="document_count" readonly="1"/>
+                            <field name="nc_path_readable" readonly="1"/>
+                            <field name="nc_id_chain" readonly="1" groups="base.group_no_one"/>
+                            <field name="nc_folder_id" readonly="1" options="{'no_open': False}"/>
                         </group>
 
                         <notebook>
@@ -117,6 +120,9 @@
             <field name="model">dino.project</field>
             <field name="arch" type="xml">
                 <form string="Purchase Project">
+                    <header>
+                        <button name="action_ensure_nc_folder" string="Sync NC" type="object" class="btn-primary"/>
+                    </header>
                     <sheet>
                         <widget name="web_ribbon" title="ЗАКУПКА" bg_color="bg-warning"/>
                         <group>
@@ -124,6 +130,8 @@
                             <field name="date" required="1"/>
                             <field name="order_ref"/>
                             <field name="partner_id" options="{'no_create': False}" domain="[('tag_ids.role','=','vendor')]" context="{'partner_role_filter':'vendor','default_partner_role':'vendor'}"/>
+                            <field name="nc_path_readable" readonly="1"/>
+                            <field name="nc_folder_id" readonly="1" options="{'no_open': False}"/>
                         </group>
                         <notebook>
                             <page string="Documents" name="documents">
@@ -168,6 +176,9 @@
             <field name="model">dino.project</field>
             <field name="arch" type="xml">
                 <form string="Overhead Project">
+                    <header>
+                        <button name="action_ensure_nc_folder" string="Sync NC" type="object" class="btn-primary"/>
+                    </header>
                     <sheet>
                         <widget name="web_ribbon" title="РАСХОД" bg_color="bg-danger"/>
                         <group>
@@ -175,6 +186,8 @@
                             <field name="date" required="1"/>
                             <field name="project_category_id" invisible="1"/>
                             <field name="partner_id" options="{'no_create': False}"/>
+                            <field name="nc_path_readable" readonly="1"/>
+                            <field name="nc_folder_id" readonly="1" options="{'no_open': False}"/>
                         </group>
                         <notebook>
                             <page string="Documents" name="documents">

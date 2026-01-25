@@ -19,6 +19,9 @@
             <field name="model">dino.project</field>
             <field name="arch" type="xml">
                 <form string="Sales Project">
+                    <header>
+                        <button name="action_ensure_nc_folder" string="Sync NC" type="object" class="btn-primary"/>
+                    </header>
                     <sheet>
                         <widget name="web_ribbon" title="ПРОДАЖА" bg_color="bg-success"/>
                         <group>
@@ -26,6 +29,8 @@
                             <field name="date" required="1"/>
                             <field name="order_ref"/>
                             <field name="partner_id" options="{'no_create': False}" domain="[('tag_ids.role','=','customer')]" context="{'partner_role_filter':'customer','default_partner_role':'customer'}"/>
+                            <field name="nc_path_readable" readonly="1"/>
+                            <field name="nc_folder_id" readonly="1" options="{'no_open': False}"/>
                         </group>
                     </sheet>
                 </form>

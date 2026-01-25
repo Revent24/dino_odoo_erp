@@ -14,12 +14,6 @@ class DinoProject(models.Model):
     date = fields.Date(string=_('Date'), required=True, default=fields.Date.today)
     project_category_id = fields.Many2one('dino.project.category', string=_('Категория проекта'), required=True)
 
-    # Поле для хранения ID папок: ["root_id", "year_id", "month_id", "project_id"]
-    nc_path_ids = fields.Text(string='NC Path IDs') 
-    
-    # Ссылка на саму запись файла (для удобства открытия)
-    nc_folder_id = fields.Many2one('nextcloud.file', string='NC Folder Record')
-    
     # Ссылка на категорию Проекта
     project_type_id = fields.Many2one('dino.project.type', string=_('Класс проекта'), required=True, index=True, tracking=True, 
                                      domain="[('project_category_id', '=', project_category_id)]")
@@ -58,46 +52,10 @@ class DinoProject(models.Model):
         return records
 
     def write(self, vals):
-        # 1. Сначала сохраняем данные в Odoo
-        res = super(DinoProject, self).write(vals)
-        
-        # 2. Если папка уже привязана и изменились ключевые поля
-        if any(k in vals for k in ['name', 'date', 'project_category_id']):
-            for record in self:
-                if record.nc_folder_id:
-                    _logger.info("NC_DEBUG: Синхронизация папки для проекта %s", record.id)
-                    record._sync_nc_folder_location()
-        return res
+        # Логика перемещения/переименования теперь в NextcloudProjectMixin.write
+        return super(DinoProject, self).write(vals)
 
-    def _sync_nc_folder_location(self):
-        """Единая логика: переименование или перемещение"""
-        self.ensure_one()
-        client = self._get_nc_client()
-        
-        # Получаем текущую папку категории (база для перемещения)
-        category_folder = self._get_or_create_root_mapping(client)
-        
-        # Формируем целевой путь (Сегменты: Год -> Месяц -> Имя)
-        d = self.date
-        new_name = f"{d.strftime('%Y-%m-%d')} {self.name}"
-        path_segments = [
-            f"{d.year} рік",
-            f"{d.year}-{d.month:02d} {self._get_month_name(d.month)}",
-            new_name
-        ]
-        
-        # Вызываем 'ensure_path' — он умный:
-        # Если путь совпадает — ничего не сделает.
-        # Если изменилось только имя — переименует (MOVE).
-        # Если изменился год/месяц — создаст новые папки и переместит (MOVE) туда проект.
-        new_path, new_id = NextcloudConnector.ensure_path(
-            client, 
-            path_segments, 
-            category_folder.path,
-            move_from=self.nc_folder_id.path # Указываем старый путь для перемещения
-        )
-        
-        # Обновляем запись папки в Odoo (без срабатывания триггеров write в самой папке)
+    # _sync_nc_folder_location удален, так как Logic v.2.0 работает через миксин
         self.nc_folder_id.with_context(no_nextcloud_move=True).write({
             'name': new_name,
             'path': new_path,
@@ -156,4 +114,5 @@ class DinoProject(models.Model):
         else:
             if not self.project_category_id:
                 expense_cat = self.env['dino.project.category'].search([('code', '=', 'expense')], limit=1)
-                if expense_cat: self.project_category_id = expense_cat
+                if expense_cat: self.project_category_id = expense_cat  
+# end of projects/models/dino_project.py

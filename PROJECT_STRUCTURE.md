@@ -95,7 +95,6 @@ models/
 security/
     ir.model.access.csv
 tools/
-    dav_api.py
     nc_connector.py
     nc_xml_templates.py
     nextcloud_api.py

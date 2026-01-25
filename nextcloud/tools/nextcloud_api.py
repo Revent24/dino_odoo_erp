@@ -1,266 +1,202 @@
 # -*- File: nextcloud/tools/nextcloud_api.py -*-
 import logging
-import xml.etree.ElementTree as ET
-from urllib.parse import quote, unquote
+import requests
 import os
-import time
-import re
-import json
+from lxml import etree
+from urllib.parse import unquote
 
 _logger = logging.getLogger(__name__)
 
 class NextcloudConnector:
-
-    @staticmethod
-    def _parse_xml_response(content, tag_name):
-        """Универсальный парсер для WebDAV XML"""
-        try:
-            root = ET.fromstring(content)
-            for elem in root.iter():
-                if elem.tag.split('}')[-1] == tag_name:
-                    return elem.text
-            return False
-        except Exception as e:
-            _logger.error("Nextcloud XML Parse Error: %s", e)
-            return False
-
-    @staticmethod
-    def _extract_fileid(response):
+    def __init__(self, url, login, password):
         """
-        Извлекает ID и гарантированно удаляет ведущие нули (00000651 -> 651).
+        Инициализация соединения с Nextcloud.
         """
-        file_id = response.headers.get('OC-FileId')
-        
-        if not file_id:
-            found = re.search(r'<(?:[^>]+:)?(?:fileid|id)>([^<]+)', response.text)
-            if found:
-                file_id = found.group(1)
-        
-        if file_id:
-            # Сначала выцепляем только цифры
-            digit_match = re.search(r'(\d+)', str(file_id))
-            if digit_match:
-                # Превращаем в int (убирает нули) и обратно в str
-                clean_id = str(int(digit_match.group(1)))
-                _logger.info("NC_DEBUG: ID очищен от нулей: %s -> %s", file_id, clean_id)
-                return clean_id
-                
-        return file_id
+        self.url = url.rstrip('/')
+        self.auth = (login, password)
 
-    @staticmethod
-    def get_path_by_id(client, file_id):
-        """Возвращает чистый путь по fileid через SEARCH"""
-        if not file_id:
-            return False
-
-        # Уточняем путь до эндпоинта файлов пользователя
-        search_url = f"/remote.php/dav/files/{client.username}/"
-        body = f"""<?xml version="1.0" encoding="UTF-8"?>
-        <d:searchrequest xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">
-          <d:basicsearch>
-            <d:select>
-                <d:prop><d:displayname/><oc:fileid/><d:getcontenttype/></d:prop>
-            </d:select>
-            <d:from>
-                <d:scope>
-                    <d:href>{search_url}</d:href>
-                    <d:depth>infinity</d:depth>
-                </d:scope>
-            </d:from>
-            <d:where>
-                <d:eq>
-                    <d:prop><oc:fileid/></d:prop>
-                    <d:literal>{file_id}</d:literal>
-                </d:eq>
-            </d:where>
-          </d:basicsearch>
-        </d:searchrequest>"""
-
-        try:
-            res = client._req('SEARCH', search_url, data=body.encode('utf-8'), headers={'Content-Type': 'text/xml'})
-            if res.status_code in [200, 207]:
-                full_href = NextcloudConnector._parse_xml_response(res.content, 'href')
-                if full_href:
-                    # Убираем домен, если он есть в href
-                    path = full_href.split('/remote.php/dav/')[1] if '/remote.php/dav/' in full_href else full_href
-                    return "/remote.php/dav/" + unquote(path).lstrip('/')
-        except Exception as e:
-            _logger.error("NC_DEBUG: Search by ID %s failed: %s", file_id, e)
-
-        return False
-
-    @staticmethod
-    def get_info_by_path(client, path):
-        """Возвращает (fileid, current_path)"""
-        res = client._req('PROPFIND', path, headers={'Depth': '0'})
-        if res.status_code in [200, 207]:
-            fileid = NextcloudConnector._parse_xml_response(res.content, 'fileid')
-            return fileid, path
-        return False, False
-
-    @staticmethod
-    def rename_node(client, old_path, new_full_path_raw):
-        """Универсальное перемещение/переименование"""
-        fs_prefix = f"/remote.php/dav/files/{client.username}"
-        
-        # Очищаем входящий путь от возможных префиксов, чтобы не было дублей
-        clean_target = new_full_path_raw.replace(fs_prefix, '').strip('/')
-        encoded_dest_path = f"{fs_prefix}/{quote(clean_target, safe='/')}"
-        
-        if not encoded_dest_path.endswith('/'):
-            encoded_dest_path += '/'
-            
-        dest_url = f"{client.url.rstrip('/')}{encoded_dest_path}"
-        
-        _logger.info("NC_DEBUG: MOVE FROM: %s TO: %s", old_path, dest_url)
-        
-        res = client._req('MOVE', old_path, headers={
-            'Destination': dest_url,
-            'Overwrite': 'F'
-        })
-        
-        if res.status_code in [201, 204]:
-            return unquote(encoded_dest_path), True
-        return False, False
-
-    @staticmethod
-    def ensure_path_v2(client, path_parts, path_ids_json=False, base_path='/'):
-        _logger.info("NC_DEBUG: ensure_path_v2 for %s", path_parts)
-        
-        # 1. Берем логин из настроек клиента
-        user = client.username
-
-        # 2. Базовый путь для WebDAV в Nextcloud
-        dav_root = f"/remote.php/dav/files/{user}"
-
-        # Убеждаемся, что текущий путь начинается правильно
-        current_path = dav_root
-        new_ids = []
-
-        # XML Body для запроса ID (обязательно для Nextcloud)
-        prop_body = (
-            '<?xml version="1.0" encoding="UTF-8"?>'
-            '<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">'
-            '  <d:prop>'
-            '    <oc:id/>'
-            '    <oc:fileid/>'
-            '  </d:prop>'
-            '</d:propfind>'
-        )
-        
-        for i, part in enumerate(path_parts):
-            test_path = f"{current_path}/{part}"
-            # Кодируем путь, но слеши должны остаться слешами для URL
-            test_path_enc = quote(test_path).replace('%2F', '/')
-
-            _logger.info("NC_DEBUG: Sending PROPFIND to: %s", test_path_enc)
-
-            res = client._req('PROPFIND', test_path_enc, data=prop_body, headers={'Depth': '0', 'Content-Type': 'text/xml'})
-
-            # Логи для проверки (теперь должны быть 207 Multi-Status)
-            _logger.info("NC_DEBUG: HTTP Status: %s", res.status_code)
-
-            f_id = NextcloudConnector._extract_fileid(res)
-
-            if f_id:
-                new_ids.append(f_id)
-                current_path = test_path
-            else:
-                # Если папки нет (404), пробуем создать (MKCOL)
-                if res.status_code == 404:
-                    mk_res = client._req('MKCOL', test_path_enc)
-                    _logger.info("NC_DEBUG: Создана папка %s, статус: %s, тело: %s", 
-                                 test_path_enc, mk_res.status_code, mk_res.text)
-                    # Повторный запрос ID после создания
-                    res = client._req('PROPFIND', test_path_enc, data=prop_body, headers={'Depth': '0', 'Content-Type': 'text/xml'})
-                    f_id = NextcloudConnector._extract_fileid(res)
-                    if f_id:
-                        new_ids.append(f_id)
-                        current_path = test_path
-                        continue
-                    else:
-                        _logger.error("NC_DEBUG: Не удалось получить ID после создания папки. Response: %s", res.text)
-
-                _logger.error("NC_DEBUG: Still no ID for '%s'. Response: %s", test_path, res.text)
-                return False, False
-
-        return current_path, new_ids
-
-    @staticmethod
-    def delete_node(client, path):
-        res = client._req('DELETE', path)
-        return res.status_code in [200, 204]
-
-    @staticmethod
-    def get_info_by_id(client, file_id):
-        """
-        Рекурсивный поиск пути по FileID (медленный, но надежный).
-        """
-        if not file_id:
+    def _clean_id(self, raw_id):
+        """Очищает File-ID до чистого целого числа (согласно nc_info.md)"""
+        if not raw_id:
             return None
+        try:
+            # Если это строка вида 00000063oczn5...
+            clean_str = str(raw_id).split('oc')[0]
+            return int(clean_str)
+        except (ValueError, IndexError):
+            return raw_id
 
-        _logger.info("NC_API: Запуск рекурсивного поиска для ID: %s", file_id)
+    def _do_request(self, method, path=None, file_id=None, headers=None, data=None):
+        """
+        Универсальный метод для выполнения запросов к Nextcloud API.
+        """
+        if file_id:
+            # Очищаем ID перед использованием в спец-эндпоинте
+            c_id = self._clean_id(file_id)
+            request_path = f"/remote.php/dav/dav-oc-id/{c_id}"
+        elif path is not None:
+            username = self.auth[0]
+            # Экранируем путь для URL (важно для кириллицы и пробелов)
+            from urllib.parse import quote
+            safe_path = quote(path.lstrip('/'))
+            request_path = f"/remote.php/dav/files/{username}/{safe_path}"
+        else:
+            # For methods like SEARCH, we use the base endpoint
+            request_path = "/remote.php/dav/"
+
+        url = self.url.rstrip('/') + request_path
+        _logger.info("NC_REQUEST: %s %s", method, url)
+
+        # Кодируем тело в UTF-8 если это строка, чтобы избежать UnicodeEncodeError (latin-1)
+        if isinstance(data, str):
+            data = data.encode('utf-8')
+
+        response = requests.request(
+            method=method,
+            url=url,
+            headers=headers,
+            data=data,
+            auth=self.auth,
+            timeout=20
+        )
+        return response
+
+    def _get_info_from_response(self, response_node, ns):
+        """Парсит <d:response> и возвращает dict с метаданными"""
+        href_raw = response_node.find('d:href', ns).text
+        href = unquote(href_raw)
         
-        # Начинаем поиск с корня пользователя
-        root_url = f"/remote.php/dav/files/{client.username}/"
+        # Очищаем href от префиксов (могут быть разные в зависимости от эндпоинта)
+        path = href
+        username = self.auth[0]
+        prefixes = [
+            f"/remote.php/dav/files/{username}",
+            "/remote.php/dav/dav-oc-id"
+        ]
         
-        # Внутренняя функция для рекурсии
-        def search_recursive(url):
-            prop_body = (
-                '<?xml version="1.0" encoding="UTF-8"?>'
+        for prefix in prefixes:
+            if path.startswith(prefix):
+                path = path[len(prefix):]
+                break
+        
+        path = path.strip('/')
+        
+        props = response_node.find('.//d:prop', ns)
+        f_id_elem = props.find('oc:fileid', ns)
+        name_elem = props.find('d:displayname', ns)
+        res_type = props.find('d:resourcetype', ns)
+        is_folder = res_type is not None and res_type.find('.//d:collection', ns) is not None
+
+        return {
+            'file_id': int(f_id_elem.text) if f_id_elem is not None else None,
+            'href': href,
+            'name': name_elem.text if name_elem is not None else os.path.basename(path),
+            'path': path,
+            'is_folder': is_folder
+        }
+
+    def _find_object(self, file_id=None, parent_id=None, name=None):
+        """
+        Универсальная функция для поиска объекта в Nextcloud.
+        - Если указан file_id, выполняется поиск по ID.
+        - Если указан parent_id и name, выполняется поиск по имени внутри родительской папки.
+        Возвращает словарь с данными объекта или None, если объект не найден.
+        """
+        if file_id:
+            return self.find_by_id(file_id)
+
+        if parent_id and name:
+            parent_info = self.get_object_data(file_id=parent_id)
+            if not parent_info:
+                return None
+
+            headers = {'Depth': '1', 'Content-Type': 'application/xml; charset=utf-8'}
+            body = (
+                '<?xml version="1.0" encoding="utf-8" ?>'
                 '<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">'
-                '  <d:prop>'
-                '    <oc:fileid/>'
-                '    <d:resourcetype/>'
-                '  </d:prop>'
+                '<d:prop><d:displayname/></d:prop>'
                 '</d:propfind>'
             )
-            
-            res = client._req('PROPFIND', url, data=prop_body, headers={'Depth': '1', 'Content-Type': 'text/xml'})
-            if res.status_code not in [200, 207]:
+
+            response = self._do_request('PROPFIND', path=parent_info['path'], headers=headers, data=body)
+            if response.status_code not in (200, 207):
                 return None
-                
-            tree = ET.fromstring(res.content)
-            namespaces = {'d': 'DAV:', 'oc': 'http://owncloud.org/ns'}
-            
-            folders_to_scan = []
 
-            for response in tree.findall(".//d:response", namespaces):
-                href = unquote(response.find("d:href", namespaces).text)
-                
-                # Пропускаем саму папку, которую сканируем
-                if href.rstrip('/') == url.rstrip('/'):
-                    continue
-                
-                # Проверяем ID
-                f_id_el = response.find(".//oc:fileid", namespaces)
-                f_id_val = f_id_el.text.lstrip('0') if f_id_el is not None and f_id_el.text else False
-                if f_id_val and str(f_id_val) == str(file_id).lstrip('0'):
-                    return href
+            try:
+                root = etree.fromstring(response.content)
+                ns = {'d': 'DAV:', 'oc': 'http://owncloud.org/ns'}
+                for resp in root.findall('.//d:response', ns):
+                    name_elem = resp.find('.//d:displayname', ns)
+                    if name_elem is not None and name_elem.text == name:
+                        return self._get_info_from_response(resp, ns)
+            except Exception as e:
+                _logger.error("Error parsing PROPFIND response: %s", e)
+                return None
 
-                # Если это папка, запоминаем для глубокого сканирования
-                rt = response.find(".//d:resourcetype", namespaces)
-                if rt is not None and rt.find("d:collection", namespaces) is not None:
-                    folders_to_scan.append(href)
-            
-            # Если в текущем уровне не нашли, идем вглубь
-            for folder_url in folders_to_scan:
-                found = search_recursive(folder_url)
-                if found:
-                    return found
-            
+        return None
+
+    def find_in_folder(self, parent_id, child_name):
+        """
+        Ищет дочерний объект по имени внутри папки-родителя.
+        Использует универсальную функцию _find_object.
+        """
+        return self._find_object(parent_id=parent_id, name=child_name)
+
+    def ensure_path_step(self, parent_id, segment_name):
+        """
+        Обеспечивает наличие папки и возвращает её ID.
+        """
+        _logger.info("Ensuring segment '%s' in parent ID %s", segment_name, parent_id)
+        child_info = self._find_object(parent_id=parent_id, name=segment_name)
+
+        if not child_info:
+            parent_info = self.get_object_data(file_id=parent_id)
+            if not parent_info:
+                raise ValueError(f"Parent folder {parent_id} not found on server.")
+
+            # Создаем новую папку
+            new_folder_path = f"{parent_info['path']}/{segment_name}"
+            self._do_request('MKCOL', path=new_folder_path)
+            child_info = self._find_object(parent_id=parent_id, name=segment_name)
+
+        return child_info['file_id'] if child_info else None
+
+    def find_by_id(self, file_id, path_scope=None):
+        """
+        Ищет объект по File-ID через универсальную функцию _find_object.
+        """
+        return self._find_object(file_id=file_id)
+
+    def get_object_data(self, path=None, file_id=None):
+        """
+        Выполняет запрос PROPFIND с заголовком {'Depth': '0'}.
+        Возвращает словарь с данными: file_id, href, name, is_folder, path.
+        Если передан file_id, использует универсальную функцию _find_object.
+        """
+        if file_id and not path:
+            return self._find_object(file_id=file_id)
+
+        headers = {'Depth': '0', 'Content-Type': 'application/xml; charset=utf-8'}
+        body = (
+            '<?xml version="1.0" encoding="utf-8" ?>'
+            '<d:propfind xmlns:d="DAV:" xmlns:oc="http://owncloud.org/ns">'
+            '<d:prop><d:displayname/><d:resourcetype/><oc:fileid/></d:prop>'
+            '</d:propfind>'
+        )
+
+        response = self._do_request('PROPFIND', path=path, headers=headers, data=body)
+        if response.status_code not in (200, 207):
             return None
 
         try:
-            found_path = search_recursive(root_url)
-            if found_path:
-                _logger.info("NC_API: Рекурсия нашла путь: %s", found_path)
-                return {'path': found_path, 'id': file_id}
-            
-            _logger.warning("NC_API: ID %s не найден после полного сканирования.", file_id)
-            return None
+            root = etree.fromstring(response.content)
+            ns = {'d': 'DAV:', 'oc': 'http://owncloud.org/ns'}
+            resp = root.find('.//d:response', ns)
+            if resp is None:
+                return None
+            return self._get_info_from_response(resp, ns)
         except Exception as e:
-            _logger.error("NC_API: Ошибка рекурсии: %s", str(e))
+            _logger.error("Error parsing PROPFIND response: %s", e)
             return None
 
 # -*- End of file nextcloud/tools/nextcloud_api.py -*-

@@ -8,12 +8,17 @@
         <field name="priority">10</field>
         <field name="arch" type="xml">
             <form string="Nextcloud Client">
+         
                 <header>
                     <button name="action_test_connection" string="Connect &amp; Sync" type="object" class="oe_highlight" icon="fa-refresh" invisible="state == 'confirmed'"/>
                     <button name="action_edit_connection" string="Edit Settings" type="object" class="oe_link" icon="fa-pencil" invisible="state != 'confirmed'"/>
                     <field name="state" widget="statusbar" invisible="1"/>
                 </header>
+                
                 <sheet>
+                <widget name="web_ribbon" title="Draft" bg_color="bg-secondary" invisible="state != 'draft'"/>
+                <widget name="web_ribbon" title="Connected" bg_color="bg-success" invisible="state != 'confirmed'"/>
+    
                     <div class="oe_title">
                         <label for="name"/>
                         <h1><field name="name" readonly="state == 'confirmed'"/></h1>
@@ -27,7 +32,7 @@
                                     <field name="password" password="True" readonly="state == 'confirmed'"/>
                                 </group>
                                 <group string="Root Directory">
-                                    <field name="root_folder_id" readonly="1" force_save="1"/>
+                                    <field name="root_folder_id" force_save="1"/>
                                     <field name="root_folder_path" readonly="1" force_save="1"/>
                                 </group>
                             </group>
@@ -50,7 +55,7 @@
                                             </group>
                                             <group string="Связь с Nextcloud">
                                                 <field name="folder_id" string="Папка в списке файлов"/>
-                                                <field name="folder_file_id" readonly="1"/>
+                                                <field name="folder_file_id" readonly="0"/>
                                                 <field name="folder_path" readonly="1"/>
                                             </group>
                                         </group>
