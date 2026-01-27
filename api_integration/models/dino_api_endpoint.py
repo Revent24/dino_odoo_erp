@@ -38,7 +38,8 @@ class DinoApiEndpoint(models.Model):
         ('mono_client_info', 'Получение информации о клиенте Монобанк'),
         ('mono_rates', 'Импорт курсов валют Монобанк'),
         ('mono_transactions', 'Импорт транзакций Монобанк'),
-        ('partners_update', 'Обновление данных партнеров')
+        ('partners_update', 'Обновление данных партнеров'),
+        ('seafile_sync', 'Синхронизация с библиотекой SeaFile')  # Новый тип операции
     ], string='Тип операции', required=True)
 
     # Authentication

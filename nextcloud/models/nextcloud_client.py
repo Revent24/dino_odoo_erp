@@ -46,68 +46,78 @@ class NextcloudClient(models.Model):
             return f"{base_url}/remote.php/dav/files/{self.username}/{path.lstrip('/')}"
         return f"{base_url}/remote.php/dav/"
 
-    def set_root_folder_id(self):
+    def set_root_folder_id_logic(self):
         """
-        ГЛАВНАЯ ЛОГИКА (согласно задаче):
-        1. Если есть ID — актуализируем по нему через SEARCH (самый надежный способ).
-        2. Если ID нет или папка удалена — создаем 'Odoo Docs' и фиксируем новый ID.
+        Logic for initializing the root folder.
+        1. Local search for the root folder in the cloud root.
+        2. If not found, perform a global search by ID.
+        3. If ID is empty or folder not found, create a new root folder in the cloud root.
         """
         self.ensure_one()
         connector = self._get_connector()
         folder_info = None
 
-        # 1. Попытка найти по ID (Logic v.2.0)
-        if self.root_folder_id:
+        # 1. Local search in the cloud root
+        folder_name = "Odoo Docs"
+        _logger.info("Attempting to find root folder locally in cloud root: '%s'", folder_name)
+        try:
+            folder_info = connector.find_object(file_path=folder_name)
+            if folder_info:
+                _logger.info("Root folder found locally in cloud root: %s", folder_info)
+        except Exception as e:
+            _logger.warning("Local search for root folder in cloud root failed: %s", e)
+
+        # 2. Global search by ID if local search yields no result
+        if not folder_info and self.root_folder_id:
             try:
-                # Всегда ищем по ИД (двухэтапный поиск: локально потом глобально)
-                # Для корня локальная область - это корень пользователя
-                _logger.info("Syncing root folder by ID: %s", self.root_folder_id)
-                folder_info = connector.find_by_id(self.root_folder_id)
-                
+                _logger.info("Attempting to find root folder globally by ID: %s", self.root_folder_id)
+                folder_info = connector.find_object_by_id(self.root_folder_id)
+
                 if folder_info:
-                    _logger.info("Found root folder info: %s", folder_info)
+                    _logger.info("Root folder found globally: %s", folder_info)
             except Exception as e:
-                _logger.warning("Failed to find root folder by ID %s: %s", self.root_folder_id, e)
+                _logger.warning("Global search for root folder by ID failed: %s", e)
 
-        # 2. Если по ID не нашли — ищем/создаем по имени в корне
+        # 3. If ID is empty or folder not found, create a new root folder in the cloud root
         if not folder_info:
-            folder_name = "Odoo Docs"
-            _logger.info("Folder not found by ID. Searching by name '%s' in root...", folder_name)
-            try:
-                folder_info = connector.get_object_data(path=folder_name)
-                if not folder_info:
-                    _logger.info("Creating new folder: %s", folder_name)
-                    connector._do_request('MKCOL', path=folder_name)
-                    folder_info = connector.get_object_data(path=folder_name)
-            except Exception as e:
-                _logger.error("Failed to create/find folder by name: %s", e)
+            _logger.info("Root folder not found. Creating new root folder: '%s'", folder_name)
+            folder_info = connector.create_root_folder(folder_name)
 
-        # 3. Сохраняем актуальный ID
-        if folder_info and folder_info.get('file_id'):
-            self.root_folder_id = str(folder_info['file_id'])
-            _logger.info("Root folder established: %s (ID: %s)", folder_info.get('name'), self.root_folder_id)
-        else:
-            _logger.error("Failed to establish root folder.")
-
-        # 3. Обновление данных
-        if folder_info:
-            self.write({
-                'root_folder_id': str(folder_info['file_id']),
-                'root_folder_path': folder_info['href'],
-                'state': 'confirmed'
-            })
-            _logger.info("Root folder set: ID=%s, Path=%s", folder_info['file_id'], folder_info['href'])
-        else:
-            self.write({'state': 'draft'})
-            raise UserError("Не удалось инициализировать корневую папку в Nextcloud.")
+        return folder_info
 
     def action_test_connection(self):
         """
-        Кнопка проверки соединения и актуализации путей.
-        Использует логику v.2.0: поиск преимущественно по ID.
+        Проверка соединения и актуализация путей.
         """
         self.ensure_one()
-        self.set_root_folder_id()
+
+        if self.root_folder_id:
+            path = self._get_connector().get_path_by_direct_id(self.root_folder_id)
+            if path:
+                # Remove leading slash for consistency
+                path = path.lstrip('/')
+                self.write({'root_folder_path': path, 'state': 'confirmed'})
+                _logger.info("Connection successful. Root folder path updated: %s", path)
+                return {
+                    'type': 'ir.actions.client',
+                    'tag': 'reload'
+                }
+            else:
+                _logger.info("Direct ID access failed, falling back to name-based search.")
+
+        # If no valid ID or direct access failed, fallback to text-based search or creation
+        folder_info = self.set_root_folder_id_logic()
+        if folder_info and folder_info.get('file_id'):
+            self.write({
+                'root_folder_id': str(folder_info['file_id']),
+                'root_folder_path': folder_info['path'],
+                'state': 'confirmed'
+            })
+            _logger.info("Root folder found or created: ID=%s, Path=%s", folder_info['file_id'], folder_info['path'])
+        else:
+            self.write({'state': 'draft'})
+            raise UserError("Failed to initialize root folder in Nextcloud.")
+
         return {
             'type': 'ir.actions.client',
             'tag': 'reload'

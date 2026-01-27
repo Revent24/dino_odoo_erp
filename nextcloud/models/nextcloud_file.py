@@ -45,7 +45,7 @@ class NextcloudFile(models.Model):
             }
 
         connector = client._get_connector()
-        c_id = str(connector._clean_id(client.root_folder_id))
+        c_id = str(connector._clean_file_id(client.root_folder_id))
         root_node = self.search([('client_id', '=', client.id), ('file_id', '=', c_id)], limit=1)
 
         if not root_node:
@@ -134,7 +134,7 @@ class NextcloudFile(models.Model):
                         connector.move_object(record.file_id, new_clean_path)
                         
                         # Обновляем путь в записи
-                        data = connector.get_object_data(file_id=record.file_id)
+                        data = connector.find_object(file_id=record.file_id)
                         if data:
                              vals['path'] = data['href']
                     except Exception as e:
@@ -150,7 +150,7 @@ class NextcloudFile(models.Model):
         
         try:
             connector = self.client_id._get_connector()
-            data = connector.get_object_data(file_id=self.file_id)
+            data = connector.find_object(file_id=self.file_id)
             if data and data['href'] != self.path:
                 _logger.info("Путь для %s изменился. Обновляем: %s -> %s", self.name, self.path, data['href'])
                 self.with_context(no_nextcloud_move=True).write({'path': data['href']})
