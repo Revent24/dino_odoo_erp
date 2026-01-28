@@ -8,7 +8,7 @@ from datetime import datetime
 import requests
 
 from odoo import models, fields, _, api
-from odoo.osv import expression
+from odoo.osv.expression import expression
 
 _logger = logging.getLogger(__name__)
 

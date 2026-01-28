@@ -1,9 +1,6 @@
 #
 #  -*- File: api_integration/models/dino_api_endpoint.py -*-
-#
-#
-#  -*- File: api_integration/models/dino_api_endpoint.py -*-
-#
+
 
 # -*- coding: utf-8 -*-
 import json
@@ -12,6 +9,8 @@ import pytz
 from datetime import datetime, timedelta
 from dateutil import relativedelta
 from odoo import api, fields, models, _
+from odoo.exceptions import UserError
+import requests
 
 _logger = logging.getLogger(__name__)
 
@@ -101,6 +100,31 @@ class DinoApiEndpoint(models.Model):
     show_token = fields.Boolean(compute='_compute_auth_visibility', store=False)
     show_api_key = fields.Boolean(compute='_compute_auth_visibility', store=False)
     show_bank = fields.Boolean(compute='_compute_auth_visibility', store=False)
+
+    # SeaFile configuration
+    seafile_url = fields.Char(string='SeaFile URL', help='URL сервера SeaFile')
+    seafile_library_id = fields.Char(string='SeaFile Library ID', help='ID библиотеки в SeaFile')
+    seafile_repo_id = fields.Char(string='SeaFile Repo ID', help='ID репозитория в SeaFile')
+
+    def action_fetch_seafile_repo_id(self):
+        self.ensure_one()
+        if not self.auth_token or not self.seafile_url:
+            raise UserError(_("SeaFile URL or Token is missing"))
+
+        url = f"{self.seafile_url.rstrip('/')}/api/v2.1/via-repo-token/repo-info/"
+        headers = {'Authorization': f'Token {self.auth_token}'}
+
+        try:
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code == 200:
+                repo_id = response.json().get('repo_id')
+                self.write({'seafile_repo_id': repo_id})
+                _logger.info("Seafile Repo ID saved: %s", repo_id)
+                return True
+            else:
+                raise UserError(_("Seafile API Error %s: %s") % (response.status_code, response.text))
+        except Exception as e:
+            raise UserError(_("Connection to Seafile failed: %s") % str(e))
 
     @api.depends('cron_active', 'cron_interval_number', 'cron_interval_type', 'cron_timezone', 'cron_start_time', 'cron_end_time', 
                  'cron_monday', 'cron_tuesday', 'cron_wednesday', 'cron_thursday', 'cron_friday', 'cron_saturday', 'cron_sunday',
@@ -248,9 +272,10 @@ class DinoApiEndpoint(models.Model):
             'mono_rates': ['token'],
             'mono_transactions': ['token'],
             'partners_update': [],
+            'seafile_sync': ['token']  # Установлено для новой операции
         }
         bank_requirements = {
-            'nbu_rates': False,  # NBU is fixed
+            'nbu_rates': False,
             'privat_balances': True,
             'privat_transactions': True,
             'privat_balance_history': True,
@@ -258,6 +283,7 @@ class DinoApiEndpoint(models.Model):
             'mono_rates': True,
             'mono_transactions': True,
             'partners_update': False,
+            'seafile_sync': False  # Установлено для новой операции
         }
         for record in self:
             required = auth_requirements.get(record.operation_type, [])
@@ -265,11 +291,16 @@ class DinoApiEndpoint(models.Model):
             record.show_api_key = 'api_key' in required
             record.show_bank = bank_requirements.get(record.operation_type, False)
 
-
-
     def action_activate(self):
         """Activate - make form readonly and show Edit/Run buttons"""
         self.ensure_one()
+        if self.operation_type == 'seafile_sync':
+            if not self.seafile_url or not self.auth_token:
+                raise UserError(_("SeaFile URL or Token is missing in the configuration."))
+
+            self.action_fetch_seafile_repo_id()
+
+        # Активируем запись
         self.write({'active': True, 'cron_running': False})
         return {'type': 'ir.actions.client', 'tag': 'reload'}
 

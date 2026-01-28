@@ -63,6 +63,8 @@
                                   ('mfo', '=', False)]"/>
                     <field name="auth_api_key" invisible="not show_api_key" widget="CopyClipboardChar" readonly="active"/>
                     <field name="auth_token" invisible="not show_token" widget="CopyClipboardChar" readonly="active"/>
+                    <field name="seafile_url" invisible="operation_type != 'seafile_sync'" readonly="active"/>
+                    <field name="seafile_repo_id" invisible="operation_type != 'seafile_sync'" readonly="1"/>
                   </group>
                   <group>
                   </group>
